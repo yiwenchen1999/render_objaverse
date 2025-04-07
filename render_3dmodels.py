@@ -79,7 +79,7 @@ def render_core(args: Options):
 
         albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
         albedo_file_output.label = 'Albedo Output'
-        albedo_file_output.base_path = '/'
+        # albedo_file_output.base_path = '/'
         albedo_file_output.file_slots[0].use_node_format = True
         albedo_file_output.format.file_format = "PNG"
         albedo_file_output.format.color_mode = 'RGBA'
