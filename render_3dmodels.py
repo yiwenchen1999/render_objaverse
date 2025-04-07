@@ -88,7 +88,7 @@ def render_core(args: Options):
 
         
         albedo_file_output.base_path = output_path
-        albedo_file_output.file_slots[0].path = f'albedo'
+        albedo_file_output.file_slots[0].path = f'/albedo'
 
 
         # with stdout_redirected():
