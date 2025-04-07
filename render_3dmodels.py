@@ -13,7 +13,7 @@ import simple_parsing
 @dataclass
 class Options:
     """ 3D dataset rendering script """
-    three_d_model_path: str = '/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/93b01f3ac4e04bc6aab1c1e7404b04b4.glb' # Base path to 3D models
+    three_d_model_path: str = '/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/e67e1b3c67804122b70eef386ebdc0be.glb' # Base path to 3D models
     env_map_list_json: str = './assets/hdri/polyhaven_hdris.json'  # Path to env map list
     env_map_dir_path: str = './assets/hdri/files'  # Path to env map directory
     white_env_map_dir_path: str = './assets/hdri/file_bw'  # Path to white env map directory
@@ -333,15 +333,15 @@ def render_core(args: Options):
             pl = white_pls[white_pl_idx]
             power = random.uniform(500, 1500)
             _point_light = create_point_light(pl, power)
-        ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
-        os.makedirs(ref_pl_path, exist_ok=True)
-        with stdout_redirected():
-            render_rgb_and_hint(f'{ref_pl_path}')
-        # save point light info
-        json.dump({
-            'pos': array2list(pl),
-            'power': power,
-        }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
+            ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
+            os.makedirs(ref_pl_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{ref_pl_path}')
+            # save point light info
+            json.dump({
+                'pos': array2list(pl),
+                'power': power,
+            }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
 
 
         # 2. Single RGB point light
@@ -368,92 +368,6 @@ def render_core(args: Options):
                 'power': power,
                 'color': rgb,
             }, open(f'{ref_pl_path}/rgb_pl.json', 'w'), indent=4)
-        return
-
-        # 3. Multi point lights
-        multi_pls = gen_random_pts_around_origin(
-            seed=seed_multi_pl,
-            N=args.num_multi_pls * args.max_pl_num,
-            min_dist_to_origin=4.0,
-            max_dist_to_origin=5.0,
-            min_theta_in_degree=0,
-            max_theta_in_degree=60
-        )
-        for multi_pl_idx in range(args.num_multi_pls):
-            pls = multi_pls[multi_pl_idx * args.max_pl_num: (multi_pl_idx + 1) * args.max_pl_num]
-            powers = [random.uniform(500, 1500) for _ in range(args.max_pl_num)]
-            for pl_idx in range(args.max_pl_num):
-                _point_light = create_point_light(pls[pl_idx], powers[pl_idx], keep_other_lights=pl_idx > 0)
-            ref_pl_path = f'{view_path}/multi_pl_{multi_pl_idx}'
-            os.makedirs(ref_pl_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}')
-            # save point light info
-            json.dump({
-                'pos': mat2list(pls),
-                'power': powers,
-            }, open(f'{ref_pl_path}/multi_pl.json', 'w'), indent=4)
-
-        # # 4. White env lighting
-        # for env_idx in range(args.num_white_envs):
-        #     env_map = random.choice(env_map_list)
-        #     env_map_path = f'{args.white_env_map_dir_path}/{env_map}.exr'
-        #     rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
-        #     strength = 1.0
-        #     set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
-        #     env_path = f'{view_path}/white_env_{env_idx}'
-        #     os.makedirs(env_path, exist_ok=True)
-        #     with stdout_redirected():
-        #         render_rgb_and_hint(f'{env_path}')
-        #     # save env map info
-        #     json.dump({
-        #         'env_map': env_map,
-        #         'rotation_euler': rotation_euler,
-        #         'strength': strength,
-        #     }, open(f'{env_path}/white_env.json', 'w'), indent=4)
-
-        # # 5. Env lighting
-        # for env_map_idx in range(args.num_env_lights):
-        #     env_map = random.choice(env_map_list)
-        #     env_map_path = f'{args.env_map_dir_path}/{env_map}.exr'
-        #     rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
-        #     strength = 1.0  # random.uniform(0.8, 1.2)
-        #     set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
-        #     env_path = f'{view_path}/env_{env_map_idx}'
-        #     os.makedirs(env_path, exist_ok=True)
-        #     with stdout_redirected():
-        #         render_rgb_and_hint(f'{env_path}')
-        #     # save env map info
-        #     json.dump({
-        #         'env_map': env_map,
-        #         'rotation_euler': rotation_euler,
-        #         'strength': strength,
-        #     }, open(f'{env_path}/env.json', 'w'), indent=4)
-        
-        # 6. Area lighting
-        area_light_positions = gen_random_pts_around_origin(
-            seed=seed_area,
-            N=args.num_area_lights,
-            min_dist_to_origin=4.0,
-            max_dist_to_origin=5.0,
-            min_theta_in_degree=0,
-            max_theta_in_degree=60
-        )
-        for area_light_idx in range(args.num_area_lights):
-            area_light_pos = area_light_positions[area_light_idx]
-            area_light_power = random.uniform(700, 1500)
-            area_light_size = random.uniform(5., 10.)
-            _area_light = create_area_light(area_light_pos, area_light_power, area_light_size)
-            area_path = f'{view_path}/area_{area_light_idx}'
-            os.makedirs(area_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{area_path}')
-            # save area light info
-            json.dump({
-                'pos': array2list(area_light_pos),
-                'power': area_light_power,
-                'size': area_light_size,
-            }, open(f'{area_path}/area.json', 'w'), indent=4)
 
 
 if __name__ == '__main__':
