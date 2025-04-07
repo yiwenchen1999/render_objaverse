@@ -40,7 +40,7 @@ def render_core(args: Options):
     from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
 
-    def render_rgb_and_hint(output_path):
+    def render_rgb_and_hint(output_path,idx):
         # Get the last added object (assuming the new object is the most recently added one)
         new_object = bpy.context.scene.objects[-1]
         # Set the name for the newly imported object
@@ -63,8 +63,8 @@ def render_core(args: Options):
         links = bpy.context.scene.node_tree.links
 
         # Clear default nodes
-        for n in nodes:
-            nodes.remove(n)
+        while nodes:
+            nodes.remove(nodes[0])
 
         # Create input render layer node
         render_layers = nodes.new('CompositorNodeRLayers')
@@ -79,16 +79,18 @@ def render_core(args: Options):
 
         albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
         albedo_file_output.label = 'Albedo Output'
-        # albedo_file_output.base_path = '/'
+        albedo_file_output.base_path = output_path
         albedo_file_output.file_slots[0].use_node_format = True
         albedo_file_output.format.file_format = "PNG"
         albedo_file_output.format.color_mode = 'RGBA'
         albedo_file_output.format.color_depth = '16'
 
-        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+        # links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
         # albedo_file_output.base_path = 'output'
-        albedo_file_output.file_slots[0].path = f'/albedo'
+        albedo_file_output.file_slots[0].path = f'/albedo_{idx}'
+        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+
 
 
 
@@ -336,7 +338,7 @@ def render_core(args: Options):
             ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
             os.makedirs(ref_pl_path, exist_ok=True)
             with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}')
+                render_rgb_and_hint(f'{ref_pl_path}',white_pl_idx)
             # save point light info
             json.dump({
                 'pos': array2list(pl),
