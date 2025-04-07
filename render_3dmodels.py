@@ -333,15 +333,15 @@ def render_core(args: Options):
             pl = white_pls[white_pl_idx]
             power = random.uniform(500, 1500)
             _point_light = create_point_light(pl, power)
-            ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
-            os.makedirs(ref_pl_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}')
-            # save point light info
-            json.dump({
-                'pos': array2list(pl),
-                'power': power,
-            }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
+        ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
+        os.makedirs(ref_pl_path, exist_ok=True)
+        with stdout_redirected():
+            render_rgb_and_hint(f'{ref_pl_path}')
+        # save point light info
+        json.dump({
+            'pos': array2list(pl),
+            'power': power,
+        }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
 
 
         # 2. Single RGB point light
@@ -368,7 +368,7 @@ def render_core(args: Options):
                 'power': power,
                 'color': rgb,
             }, open(f'{ref_pl_path}/rgb_pl.json', 'w'), indent=4)
-        
+        return
 
         # 3. Multi point lights
         multi_pls = gen_random_pts_around_origin(
