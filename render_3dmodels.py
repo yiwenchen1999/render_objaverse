@@ -50,7 +50,7 @@ def render_core(args: Options):
 
         bpy.context.scene.view_layers["ViewLayer"].material_override = None
         bpy.context.scene.render.image_settings.file_format = 'PNG'  # set output to png (with tonemapping)
-        bpy.context.scene.render.filepath = f'{output_path}.png'
+        bpy.context.scene.render.filepath = os.path.join(output_path, 'gt.png')
         
         # if render_depth/albedo/normal pass is enabled
         bpy.context.scene.use_nodes = True
@@ -87,8 +87,8 @@ def render_core(args: Options):
         links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
         
-        albedo_file_output.base_path = 'output/93b01f3ac4e04bc6aab1c1e7404b04b4'
-        albedo_file_output.file_slots[0].path = f'_albedo'
+        albedo_file_output.base_path = output_path
+        albedo_file_output.file_slots[0].path = f'albedo'
 
 
         # with stdout_redirected():
@@ -219,13 +219,13 @@ def render_core(args: Options):
         bpy.context.scene.render.film_transparent = True
         bpy.context.scene.render.image_settings.color_mode = 'RGBA'
 
-        scene = bpy.context.scene
-        scene.cycles.diffuse_bounces = 1
-        scene.cycles.glossy_bounces = 1
-        scene.cycles.transparent_max_bounces = 3
-        scene.cycles.transmission_bounces = 3
-        scene.cycles.samples = 32
-        scene.cycles.use_denoising = True
+        # scene = bpy.context.scene
+        # scene.cycles.diffuse_bounces = 1
+        # scene.cycles.glossy_bounces = 1
+        # scene.cycles.transparent_max_bounces = 3
+        # scene.cycles.transmission_bounces = 3
+        # scene.cycles.samples = 32
+        # scene.cycles.use_denoising = True
 
 
         # # if render_depth/albedo/normal pass is enabled
@@ -329,7 +329,7 @@ def render_core(args: Options):
             ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
             os.makedirs(ref_pl_path, exist_ok=True)
             with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}/gt')
+                render_rgb_and_hint(f'{ref_pl_path}')
             # save point light info
             json.dump({
                 'pos': array2list(pl),
@@ -353,7 +353,7 @@ def render_core(args: Options):
             ref_pl_path = f'{view_path}/rgb_pl_{rgb_pl_idx}'
             os.makedirs(ref_pl_path, exist_ok=True)
             with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}/gt')
+                render_rgb_and_hint(f'{ref_pl_path}')
             # save point light info
             json.dump({
                 'pos': array2list(pl),
@@ -378,7 +378,7 @@ def render_core(args: Options):
             ref_pl_path = f'{view_path}/multi_pl_{multi_pl_idx}'
             os.makedirs(ref_pl_path, exist_ok=True)
             with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}/gt')
+                render_rgb_and_hint(f'{ref_pl_path}')
             # save point light info
             json.dump({
                 'pos': mat2list(pls),
@@ -395,7 +395,7 @@ def render_core(args: Options):
         #     env_path = f'{view_path}/white_env_{env_idx}'
         #     os.makedirs(env_path, exist_ok=True)
         #     with stdout_redirected():
-        #         render_rgb_and_hint(f'{env_path}/gt')
+        #         render_rgb_and_hint(f'{env_path}')
         #     # save env map info
         #     json.dump({
         #         'env_map': env_map,
@@ -413,7 +413,7 @@ def render_core(args: Options):
         #     env_path = f'{view_path}/env_{env_map_idx}'
         #     os.makedirs(env_path, exist_ok=True)
         #     with stdout_redirected():
-        #         render_rgb_and_hint(f'{env_path}/gt')
+        #         render_rgb_and_hint(f'{env_path}')
         #     # save env map info
         #     json.dump({
         #         'env_map': env_map,
@@ -438,7 +438,7 @@ def render_core(args: Options):
             area_path = f'{view_path}/area_{area_light_idx}'
             os.makedirs(area_path, exist_ok=True)
             with stdout_redirected():
-                render_rgb_and_hint(f'{area_path}/gt')
+                render_rgb_and_hint(f'{area_path}')
             # save area light info
             json.dump({
                 'pos': array2list(area_light_pos),
