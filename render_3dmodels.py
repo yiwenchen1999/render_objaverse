@@ -91,8 +91,8 @@ def render_core(args: Options):
         albedo_file_output.file_slots[0].path = f'_albedo.png'
 
 
-        with stdout_redirected():
-            bpy.ops.render.render(write_still=True)
+        # with stdout_redirected():
+        bpy.ops.render.render(write_still=True)
         bpy.context.view_layer.update()
 
 
