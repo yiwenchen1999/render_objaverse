@@ -79,17 +79,16 @@ def render_core(args: Options):
         def link_pass(output_node, input_socket):
             tree.links.new(rl.outputs[input_socket], output_node.inputs[0])
 
-        # # Add nodes and link them
-        # for pass_type, pass_name in [('diffuse_color', 'Diffuse Color'),
-        #                             ('normal', 'normal'),
-        #                             ('glossy_color', 'metallic')]:
+        for pass_type, pass_name in [('diffuse_color', 'DiffCol'),
+                                    ('image', 'Image'),
+                                    ('glossy_color', 'GlossCol')]:
+            out_node = add_output_node(pass_name.capitalize(), pass_type)
+            link_pass(out_node, pass_name)
+        # for pass_name in rl.outputs.keys():
+        #     if pass_name == 'IndexMA':
+        #         continue
         #     out_node = add_output_node(pass_name.capitalize(), pass_name)
         #     link_pass(out_node, pass_name)
-        for pass_name in rl.outputs.keys():
-            if pass_name == 'IndexMA':
-                continue
-            out_node = add_output_node(pass_name.capitalize(), pass_name)
-            link_pass(out_node, pass_name)
 
         # Render with compositor
         bpy.ops.render.render(animation=False, write_still=True)
