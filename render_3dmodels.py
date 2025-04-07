@@ -369,7 +369,6 @@ def render_core(args: Options):
                 'color': rgb,
             }, open(f'{ref_pl_path}/rgb_pl.json', 'w'), indent=4)
         
-        return
 
         # 3. Multi point lights
         multi_pls = gen_random_pts_around_origin(
