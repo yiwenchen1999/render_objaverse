@@ -41,15 +41,63 @@ def render_core(args: Options):
     from bpy_helper.utils import stdout_redirected
 
     def render_rgb_and_hint(output_path):
+            # Get the last added object (assuming the new object is the most recently added one)
+        new_object = bpy.context.scene.objects[-1]
+        # Set the name for the newly imported object
+        new_object.name = "shape"
+        bpy.context.view_layer.objects.active = new_object
+        bpy.context.view_layer.update()
+
         bpy.context.scene.view_layers["ViewLayer"].material_override = None
         bpy.context.scene.render.image_settings.file_format = 'PNG'  # set output to png (with tonemapping)
         bpy.context.scene.render.filepath = f'{output_path}.png'
+        
+        # if render_depth/albedo/normal pass is enabled
+        bpy.context.scene.use_nodes = True
+        active_view_layer = bpy.context.view_layer
+        if not active_view_layer:
+            print("View Layer not found.")
+            raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
+
+        nodes = bpy.context.scene.node_tree.nodes
+        links = bpy.context.scene.node_tree.links
+
+        # Clear default nodes
+        for n in nodes:
+            nodes.remove(n)
+
+        # Create input render layer node
+        render_layers = nodes.new('CompositorNodeRLayers')
+
+        # if rendering albedo
+        active_view_layer.use_pass_diffuse_color = True
+        print("Albedo pass enabled")
+        # Create albedo output nodes
+        alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
+        links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
+        links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
+
+        albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
+        albedo_file_output.label = 'Albedo Output'
+        albedo_file_output.base_path = '/'
+        albedo_file_output.file_slots[0].use_node_format = True
+        albedo_file_output.format.file_format = "PNG"
+        albedo_file_output.format.color_mode = 'RGBA'
+        albedo_file_output.format.color_depth = '16'
+        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+
+        
+        
+        albedo_file_output.file_slots[0].path = output_path + "_albedo"
+
+
+
         bpy.ops.render.render(animation=False, write_still=True)
 
-        img = imageio.v3.imread(f'{output_path}.png') / 255.
-        if img.shape[-1] == 4:
-            img = img[..., :3] * img[..., 3:]  # fix edge aliasing
-        imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
+        # img = imageio.v3.imread(f'{output_path}.png') / 255.
+        # if img.shape[-1] == 4:
+        #     img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        # imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
         
         # color_depth = '16' # Important for albedo and depth
 
@@ -178,39 +226,39 @@ def render_core(args: Options):
         scene.cycles.use_denoising = True
 
 
-        # if render_depth/albedo/normal pass is enabled
-        scene.use_nodes = True
-        active_view_layer = bpy.context.view_layer
-        if not active_view_layer:
-            print("View Layer not found.")
-            raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
+        # # if render_depth/albedo/normal pass is enabled
+        # scene.use_nodes = True
+        # active_view_layer = bpy.context.view_layer
+        # if not active_view_layer:
+        #     print("View Layer not found.")
+        #     raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
 
-        nodes = bpy.context.scene.node_tree.nodes
-        links = bpy.context.scene.node_tree.links
+        # nodes = bpy.context.scene.node_tree.nodes
+        # links = bpy.context.scene.node_tree.links
 
-        # Clear default nodes
-        for n in nodes:
-            nodes.remove(n)
+        # # Clear default nodes
+        # for n in nodes:
+        #     nodes.remove(n)
 
-        # Create input render layer node
-        render_layers = nodes.new('CompositorNodeRLayers')
+        # # Create input render layer node
+        # render_layers = nodes.new('CompositorNodeRLayers')
 
-        # if rendering albedo
-        active_view_layer.use_pass_diffuse_color = True
-        print("Albedo pass enabled")
-        # Create albedo output nodes
-        alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
-        links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
-        links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
+        # # if rendering albedo
+        # active_view_layer.use_pass_diffuse_color = True
+        # print("Albedo pass enabled")
+        # # Create albedo output nodes
+        # alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
+        # links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
+        # links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
 
-        albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
-        albedo_file_output.label = 'Albedo Output'
-        albedo_file_output.base_path = '/'
-        albedo_file_output.file_slots[0].use_node_format = True
-        albedo_file_output.format.file_format = "PNG"
-        albedo_file_output.format.color_mode = 'RGBA'
-        albedo_file_output.format.color_depth = '16'
-        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+        # albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
+        # albedo_file_output.label = 'Albedo Output'
+        # albedo_file_output.base_path = '/'
+        # albedo_file_output.file_slots[0].use_node_format = True
+        # albedo_file_output.format.file_format = "PNG"
+        # albedo_file_output.format.color_mode = 'RGBA'
+        # albedo_file_output.format.color_depth = '16'
+        # links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
 
 
