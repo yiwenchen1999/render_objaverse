@@ -50,41 +50,69 @@ def render_core(args: Options):
             img = img[..., :3] * img[..., 3:]  # fix edge aliasing
         imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
 
-        # Enable additional passes
-        bpy.context.view_layer.use_pass_normal = True
-        bpy.context.view_layer.use_pass_diffuse_color = True
-        bpy.context.view_layer.use_pass_glossy_color = True
-        bpy.context.view_layer.use_pass_material_index = True
+        # scene.use_nodes = True
+        active_view_layer = bpy.context.view_layer
+        if not active_view_layer:
+            print("View Layer not found.")
+            raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
 
-        # Use compositor to extract maps
-        scene = bpy.context.scene
-        scene.use_nodes = True
-        tree = scene.node_tree
-        tree.nodes.clear()
-
-        rl = tree.nodes.new(type='CompositorNodeRLayers')
-        print('--------------------------')
-        # print('input_socket:', input_socket)
-        print(('rl.outputs has keys:', rl.outputs.keys()))
+        nodes = bpy.context.scene.node_tree.nodes
+        links = bpy.context.scene.node_tree.links
+        render_layers = nodes.new('CompositorNodeRLayers')
 
 
-        # Output directory logic
-        def add_output_node(label, path_suffix):
-            file_output = tree.nodes.new(type='CompositorNodeOutputFile')
-            file_output.label = label
-            file_output.base_path = os.path.dirname(output_path)
-            file_output.file_slots[0].path = f'{os.path.basename(output_path)}_{path_suffix}_'
-            return file_output
+        active_view_layer.use_pass_diffuse_color = True
+        print("Albedo pass enabled")
+        # Create albedo output nodes
+        alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
+        links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
+        links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
 
-        def link_pass(output_node, input_socket):
-            tree.links.new(rl.outputs[input_socket], output_node.inputs[0])
+        albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
+        albedo_file_output.label = 'Albedo Output'
+        albedo_file_output.base_path = '/'
+        albedo_file_output.file_slots[0].use_node_format = True
+        albedo_file_output.format.file_format = "PNG"
+        albedo_file_output.format.color_mode = 'RGBA'
+        albedo_file_output.format.color_depth = color_depth
+        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
-        for pass_type, pass_name in [
-            ('diffuse_color', 'DiffCol'),              
-            # ('glossy_color', 'GlossCol')
-                                    ]:
-            out_node = add_output_node(pass_name.capitalize(), pass_type)
-            link_pass(out_node, pass_name)
+
+        # # Enable additional passes
+        # bpy.context.view_layer.use_pass_normal = True
+        # bpy.context.view_layer.use_pass_diffuse_color = True
+        # bpy.context.view_layer.use_pass_glossy_color = True
+        # bpy.context.view_layer.use_pass_material_index = True
+
+        # # Use compositor to extract maps
+        # scene = bpy.context.scene
+        # scene.use_nodes = True
+        # tree = scene.node_tree
+        # tree.nodes.clear()
+
+        # rl = tree.nodes.new(type='CompositorNodeRLayers')
+        # print('--------------------------')
+        # # print('input_socket:', input_socket)
+        # print(('rl.outputs has keys:', rl.outputs.keys()))
+
+
+        # # Output directory logic
+        # def add_output_node(label, path_suffix):
+        #     file_output = tree.nodes.new(type='CompositorNodeOutputFile')
+        #     file_output.label = label
+        #     file_output.base_path = os.path.dirname(output_path)
+        #     file_output.file_slots[0].path = f'{os.path.basename(output_path)}_{path_suffix}_'
+        #     return file_output
+
+        # def link_pass(output_node, input_socket):
+        #     tree.links.new(rl.outputs[input_socket], output_node.inputs[0])
+
+        # for pass_type, pass_name in [
+        #     ('diffuse_color', 'DiffCol'),              
+        #     # ('glossy_color', 'GlossCol')
+        #                             ]:
+        #     out_node = add_output_node(pass_name.capitalize(), pass_type)
+        #     link_pass(out_node, pass_name)
         # for pass_name in rl.outputs.keys():
         #     if pass_name == 'IndexMA':
         #         continue
