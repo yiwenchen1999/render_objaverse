@@ -436,6 +436,6 @@ def render(obj_path: str | Path,
     
 # render green airplane
 if __name__ == "__main__":
-    render("/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/83848995cbfb4727b2b85ca713363d15.glb",
+    render("/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/93b01f3ac4e04bc6aab1c1e7404b04b4.glb",
             'example_render') 
     
