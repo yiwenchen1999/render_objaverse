@@ -87,7 +87,7 @@ def render_core(args: Options):
 
         links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
-        # albedo_file_output.base_path = output_path
+        albedo_file_output.base_path = output_path
         albedo_file_output.file_slots[0].path = f'/albedo'
 
 
@@ -97,11 +97,17 @@ def render_core(args: Options):
         bpy.context.view_layer.update()
 
 
-        # img = imageio.v3.imread(f'{output_path}.png') / 255.
-        # if img.shape[-1] == 4:
-        #     img = img[..., :3] * img[..., 3:]  # fix edge aliasing
-        # imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
-        
+        img = imageio.v3.imread(os.path.join(output_path, 'gt.png')) / 255.
+        if img.shape[-1] == 4:
+            img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        imageio.v3.imwrite(os.path.join(output_path, 'gt.png'), (img * 255).clip(0, 255).astype(np.uint8))
+
+
+        img = imageio.v3.imread(os.path.join(output_path, 'albedo0001.png')) / 255.
+        if img.shape[-1] == 4:
+            img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        imageio.v3.imwrite(os.path.join(output_path, 'albedo0001.png'), (img * 255).clip(0, 255).astype(np.uint8))
+
         # color_depth = '16' # Important for albedo and depth
 
 
