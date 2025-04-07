@@ -13,7 +13,7 @@ import simple_parsing
 @dataclass
 class Options:
     """ 3D dataset rendering script """
-    three_d_model_path: str = '/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/bdec7557eeb64a98a4ff19fc22e9142c.glb' # Base path to 3D models
+    three_d_model_path: str = '/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/83848995cbfb4727b2b85ca713363d15.glb' # Base path to 3D models
     env_map_list_json: str = './assets/hdri/polyhaven_hdris.json'  # Path to env map list
     env_map_dir_path: str = './assets/hdri/files'  # Path to env map directory
     white_env_map_dir_path: str = './assets/hdri/file_bw'  # Path to white env map directory
