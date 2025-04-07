@@ -103,10 +103,10 @@ def render_core(args: Options):
         imageio.v3.imwrite(os.path.join(output_path, 'gt.png'), (img * 255).clip(0, 255).astype(np.uint8))
 
 
-        img = imageio.v3.imread(os.path.join(output_path, 'albedo0001.png')) / 255.
-        if img.shape[-1] == 4:
-            img = img[..., :3] * img[..., 3:]  # fix edge aliasing
-        imageio.v3.imwrite(os.path.join(output_path, 'albedo0001.png'), (img * 255).clip(0, 255).astype(np.uint8))
+        # img = imageio.v3.imread(os.path.join(output_path, 'albedo0001.png')) / 255.
+        # if img.shape[-1] == 4:
+        #     img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        # imageio.v3.imwrite(os.path.join(output_path, 'albedo0001.png'), (img * 255).clip(0, 255).astype(np.uint8))
 
         # color_depth = '16' # Important for albedo and depth
 
@@ -342,6 +342,7 @@ def render_core(args: Options):
                 'pos': array2list(pl),
                 'power': power,
             }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
+            break
         return
 
         # 2. Single RGB point light
