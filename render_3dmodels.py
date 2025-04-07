@@ -88,11 +88,13 @@ def render_core(args: Options):
 
         
         
-        albedo_file_output.file_slots[0].path = output_path + "_albedo"
+        albedo_file_output.file_slots[0].path = output_path + "_albedo.png"
 
 
+        with stdout_redirected():
+            bpy.ops.render.render(write_still=True)
+        bpy.context.view_layer.update()
 
-        bpy.ops.render.render(animation=False, write_still=True)
 
         # img = imageio.v3.imread(f'{output_path}.png') / 255.
         # if img.shape[-1] == 4:
