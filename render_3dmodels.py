@@ -45,10 +45,12 @@ def render_core(args: Options):
         bpy.context.scene.render.image_settings.file_format = 'PNG'  # set output to png (with tonemapping)
         bpy.context.scene.render.filepath = f'{output_path}.png'
         bpy.ops.render.render(animation=False, write_still=True)
+
         img = imageio.v3.imread(f'{output_path}.png') / 255.
         if img.shape[-1] == 4:
             img = img[..., :3] * img[..., 3:]  # fix edge aliasing
         imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
+        
         color_depth = '16' # Important for albedo and depth
 
 
