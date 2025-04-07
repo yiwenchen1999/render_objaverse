@@ -49,6 +49,8 @@ def render_core(args: Options):
         if img.shape[-1] == 4:
             img = img[..., :3] * img[..., 3:]  # fix edge aliasing
         imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
+        color_depth = '16' # Important for albedo and depth
+
 
         # scene.use_nodes = True
         active_view_layer = bpy.context.view_layer
