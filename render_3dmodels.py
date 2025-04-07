@@ -84,12 +84,12 @@ def render_core(args: Options):
         albedo_file_output.format.file_format = "PNG"
         albedo_file_output.format.color_mode = 'RGBA'
         albedo_file_output.format.color_depth = '16'
-        albedo_file_output.base_path = output_path
-        albedo_file_output.file_slots[0].path = f'/albedo'
 
         links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
-        
+        # albedo_file_output.base_path = output_path
+        albedo_file_output.file_slots[0].path = f'/albedo'
+
 
 
         # with stdout_redirected():
