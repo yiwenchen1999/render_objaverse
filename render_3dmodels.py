@@ -51,41 +51,41 @@ def render_core(args: Options):
             img = img[..., :3] * img[..., 3:]  # fix edge aliasing
         imageio.v3.imwrite(f'{output_path}.png', (img * 255).clip(0, 255).astype(np.uint8))
         
-        color_depth = '16' # Important for albedo and depth
+        # color_depth = '16' # Important for albedo and depth
 
 
-        # scene.use_nodes = True
-        active_view_layer = bpy.context.view_layer
-        if not active_view_layer:
-            print("View Layer not found.")
-            raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
+        # # scene.use_nodes = True
+        # active_view_layer = bpy.context.view_layer
+        # if not active_view_layer:
+        #     print("View Layer not found.")
+        #     raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
 
-        nodes = bpy.context.scene.node_tree.nodes
-        links = bpy.context.scene.node_tree.links
-        render_layers = nodes.new('CompositorNodeRLayers')
+        # nodes = bpy.context.scene.node_tree.nodes
+        # links = bpy.context.scene.node_tree.links
+        # render_layers = nodes.new('CompositorNodeRLayers')
 
 
-        active_view_layer.use_pass_diffuse_color = True
-        print("Albedo pass enabled")
-        # Create albedo output nodes
-        alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
-        links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
-        links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
+        # active_view_layer.use_pass_diffuse_color = True
+        # print("Albedo pass enabled")
+        # # Create albedo output nodes
+        # alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
+        # links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
+        # links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
 
-        albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
-        albedo_file_output.label = 'Albedo Output'
-        albedo_file_output.base_path = '/'
-        albedo_file_output.file_slots[0].use_node_format = True
-        albedo_file_output.format.file_format = "PNG"
-        albedo_file_output.format.color_mode = 'RGBA'
-        albedo_file_output.format.color_depth = color_depth
-        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
-        bpy.ops.render.render(animation=False, write_still=True)
+        # albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
+        # albedo_file_output.label = 'Albedo Output'
+        # albedo_file_output.base_path = '/'
+        # albedo_file_output.file_slots[0].use_node_format = True
+        # albedo_file_output.format.file_format = "PNG"
+        # albedo_file_output.format.color_mode = 'RGBA'
+        # albedo_file_output.format.color_depth = color_depth
+        # links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+        # bpy.ops.render.render(animation=False, write_still=True)
 
-        img = imageio.v3.imread(f'{output_path}.png') / 255.
-        if img.shape[-1] == 4:
-            img = img[..., :3] * img[..., 3:]  # fix edge aliasing
-        imageio.v3.imwrite(f'{output_path}_albedo.png', (img * 255).clip(0, 255).astype(np.uint8))
+        # img = imageio.v3.imread(f'{output_path}.png') / 255.
+        # if img.shape[-1] == 4:
+        #     img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        # imageio.v3.imwrite(f'{output_path}_albedo.png', (img * 255).clip(0, 255).astype(np.uint8))
 
 
 
@@ -133,11 +133,11 @@ def render_core(args: Options):
         # Render with compositor
         # bpy.ops.render.render(animation=False, write_still=True)
 
-        # Re-disable unused passes
-        bpy.context.view_layer.use_pass_normal = False
-        bpy.context.view_layer.use_pass_diffuse_color = False
-        bpy.context.view_layer.use_pass_glossy_color = False
-        bpy.context.view_layer.use_pass_material_index = False
+        # # Re-disable unused passes
+        # bpy.context.view_layer.use_pass_normal = False
+        # bpy.context.view_layer.use_pass_diffuse_color = False
+        # bpy.context.view_layer.use_pass_glossy_color = False
+        # bpy.context.view_layer.use_pass_material_index = False
 
         # MAT_DICT = {
         #     '_diffuse': create_white_diffuse_material(),
@@ -168,6 +168,51 @@ def render_core(args: Options):
         # Enable the alpha channel for GT mask
         bpy.context.scene.render.film_transparent = True
         bpy.context.scene.render.image_settings.color_mode = 'RGBA'
+
+        scene = bpy.context.scene
+        scene.cycles.diffuse_bounces = 1
+        scene.cycles.glossy_bounces = 1
+        scene.cycles.transparent_max_bounces = 3
+        scene.cycles.transmission_bounces = 3
+        scene.cycles.samples = 32
+        scene.cycles.use_denoising = True
+
+
+        # if render_depth/albedo/normal pass is enabled
+        scene.use_nodes = True
+        active_view_layer = bpy.context.view_layer
+        if not active_view_layer:
+            print("View Layer not found.")
+            raise Exception("View layer not found, neither depth, albdedo nor normal pass can be enabled")
+
+        nodes = bpy.context.scene.node_tree.nodes
+        links = bpy.context.scene.node_tree.links
+
+        # Clear default nodes
+        for n in nodes:
+            nodes.remove(n)
+
+        # Create input render layer node
+        render_layers = nodes.new('CompositorNodeRLayers')
+
+        # if rendering albedo
+        active_view_layer.use_pass_diffuse_color = True
+        print("Albedo pass enabled")
+        # Create albedo output nodes
+        alpha_albedo = nodes.new(type="CompositorNodeSetAlpha")
+        links.new(render_layers.outputs['DiffCol'], alpha_albedo.inputs['Image'])
+        links.new(render_layers.outputs['Alpha'], alpha_albedo.inputs['Alpha'])
+
+        albedo_file_output = nodes.new(type="CompositorNodeOutputFile")
+        albedo_file_output.label = 'Albedo Output'
+        albedo_file_output.base_path = '/'
+        albedo_file_output.file_slots[0].use_node_format = True
+        albedo_file_output.format.file_format = "PNG"
+        albedo_file_output.format.color_mode = 'RGBA'
+        albedo_file_output.format.color_depth = 16
+        links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+
+
 
     reset_scene()
 
