@@ -8,7 +8,16 @@ import time
 
 from utils.utils import enable_cuda_devices
 from utils.utils import get_3x4_RT_matrix_from_blender
-from utils.supress_logging import stdout_redirected
+# from utils.supress_logging import stdout_redirected
+
+from bpy_helper.camera import create_camera, look_at_to_c2w
+from bpy_helper.io import render_depth_map, mat2list, array2list
+from bpy_helper.light import create_point_light, set_env_light, create_area_light
+from bpy_helper.material import create_white_diffuse_material, create_specular_ggx_material, clear_emission_and_alpha_nodes
+from bpy_helper.random import gen_random_pts_around_origin
+from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
+from bpy_helper.utils import stdout_redirected
+
 
 from utils.light_enum import SunPosition,SpotlightsPosition
 import utils.blender_utils as blender_utils
@@ -173,8 +182,11 @@ def render(obj_path: str | Path,
 
 
     time_import = time.time()
+    # with stdout_redirected():
     with stdout_redirected():
-        bpy.ops.import_scene.obj(filepath=obj_path, use_edges=False, use_smooth_groups=False, split_mode='OFF')
+        import_3d_model(file_path)
+    scale, offset = normalize_scene(use_bounding_sphere=True)
+    clear_emission_and_alpha_nodes()
     print("importing took {}s".format(time.time()-time_import))
 
     # Get the last added object (assuming the new object is the most recently added one)
@@ -424,6 +436,6 @@ def render(obj_path: str | Path,
     
 # render green airplane
 if __name__ == "__main__":
-    render("/home/hieu/.objaverse/hf-objaverse-v1/glbs/000-091/83848995cbfb4727b2b85ca713363d15.glb",
+    render("green_airplane_model/model_normalized.obj",
             'example_render') 
     
