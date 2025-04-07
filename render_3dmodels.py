@@ -78,6 +78,13 @@ def render_core(args: Options):
         albedo_file_output.format.color_mode = 'RGBA'
         albedo_file_output.format.color_depth = color_depth
         links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
+        bpy.ops.render.render(animation=False, write_still=True)
+
+        img = imageio.v3.imread(f'{output_path}.png') / 255.
+        if img.shape[-1] == 4:
+            img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        imageio.v3.imwrite(f'{output_path}_albedo.png', (img * 255).clip(0, 255).astype(np.uint8))
+
 
 
         # # Enable additional passes
@@ -122,7 +129,7 @@ def render_core(args: Options):
         #     link_pass(out_node, pass_name)
 
         # Render with compositor
-        bpy.ops.render.render(animation=False, write_still=True)
+        # bpy.ops.render.render(animation=False, write_still=True)
 
         # Re-disable unused passes
         bpy.context.view_layer.use_pass_normal = False
@@ -130,22 +137,22 @@ def render_core(args: Options):
         bpy.context.view_layer.use_pass_glossy_color = False
         bpy.context.view_layer.use_pass_material_index = False
 
-        MAT_DICT = {
-            '_diffuse': create_white_diffuse_material(),
-            '_ggx0.05': create_specular_ggx_material(0.05),
-            '_ggx0.13': create_specular_ggx_material(0.13),
-            '_ggx0.34': create_specular_ggx_material(0.34),
-        }
+        # MAT_DICT = {
+        #     '_diffuse': create_white_diffuse_material(),
+        #     '_ggx0.05': create_specular_ggx_material(0.05),
+        #     '_ggx0.13': create_specular_ggx_material(0.13),
+        #     '_ggx0.34': create_specular_ggx_material(0.34),
+        # }
 
-        # render
-        for mat_name, mat in MAT_DICT.items():
-            bpy.context.scene.view_layers["ViewLayer"].material_override = mat
-            bpy.context.scene.render.filepath = f'{output_path}{mat_name}.png'
-            bpy.ops.render.render(animation=False, write_still=True)
-            img = imageio.v3.imread(f'{output_path}{mat_name}.png') / 255.
-            if img.shape[-1] == 4:
-                img = img[..., :3] * img[..., 3:]  # fix edge aliasing
-            imageio.v3.imwrite(f'{output_path}{mat_name}.png', (img * 255).clip(0, 255).astype(np.uint8))
+        # # render
+        # for mat_name, mat in MAT_DICT.items():
+        #     bpy.context.scene.view_layers["ViewLayer"].material_override = mat
+        #     bpy.context.scene.render.filepath = f'{output_path}{mat_name}.png'
+        #     bpy.ops.render.render(animation=False, write_still=True)
+        #     img = imageio.v3.imread(f'{output_path}{mat_name}.png') / 255.
+        #     if img.shape[-1] == 4:
+        #         img = img[..., :3] * img[..., 3:]  # fix edge aliasing
+        #     imageio.v3.imwrite(f'{output_path}{mat_name}.png', (img * 255).clip(0, 255).astype(np.uint8))
 
     def configure_blender():
         # Set the render resolution
