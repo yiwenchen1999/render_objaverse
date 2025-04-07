@@ -87,8 +87,8 @@ def render_core(args: Options):
         links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
         
-        
-        albedo_file_output.file_slots[0].path = f'_albedo.png'
+        albedo_file_output.base_path = 'output/93b01f3ac4e04bc6aab1c1e7404b04b4'
+        albedo_file_output.file_slots[0].path = f'_albedo'
 
 
         # with stdout_redirected():
