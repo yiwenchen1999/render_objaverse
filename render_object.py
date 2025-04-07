@@ -184,7 +184,7 @@ def render(obj_path: str | Path,
     time_import = time.time()
     # with stdout_redirected():
     with stdout_redirected():
-        import_3d_model(file_path)
+        import_3d_model(obj_path)
     scale, offset = normalize_scene(use_bounding_sphere=True)
     clear_emission_and_alpha_nodes()
     print("importing took {}s".format(time.time()-time_import))
