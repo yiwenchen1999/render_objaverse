@@ -41,7 +41,7 @@ def render_core(args: Options):
     from bpy_helper.utils import stdout_redirected
 
     def render_rgb_and_hint(output_path):
-            # Get the last added object (assuming the new object is the most recently added one)
+        # Get the last added object (assuming the new object is the most recently added one)
         new_object = bpy.context.scene.objects[-1]
         # Set the name for the newly imported object
         new_object.name = "shape"
@@ -84,11 +84,12 @@ def render_core(args: Options):
         albedo_file_output.format.file_format = "PNG"
         albedo_file_output.format.color_mode = 'RGBA'
         albedo_file_output.format.color_depth = '16'
+        albedo_file_output.base_path = output_path
+        albedo_file_output.file_slots[0].path = f'/albedo'
+
         links.new(alpha_albedo.outputs['Image'], albedo_file_output.inputs[0])
 
         
-        albedo_file_output.base_path = output_path
-        albedo_file_output.file_slots[0].path = f'/albedo'
 
 
         # with stdout_redirected():
