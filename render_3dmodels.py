@@ -342,8 +342,7 @@ def render_core(args: Options):
                 'pos': array2list(pl),
                 'power': power,
             }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
-            break
-        return
+
 
         # 2. Single RGB point light
         rgb_pls = gen_random_pts_around_origin(
@@ -369,6 +368,8 @@ def render_core(args: Options):
                 'power': power,
                 'color': rgb,
             }, open(f'{ref_pl_path}/rgb_pl.json', 'w'), indent=4)
+        
+        return
 
         # 3. Multi point lights
         multi_pls = gen_random_pts_around_origin(
