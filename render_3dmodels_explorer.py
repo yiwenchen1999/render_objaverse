@@ -19,7 +19,7 @@ class Options:
     env_map_dir_path: str = './assets/hdri/files'  # Path to env map directory
     white_env_map_dir_path: str = './assets/hdri/file_bw'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
-    num_views: int = 4  # Number of views
+    num_views: int = 200  # Number of views
     num_white_pls: int = 2  # Number of white point lighting
     num_rgb_pls: int = 2  # Number of RGB point lighting
     num_multi_pls: int = 2  # Number of multi point lighting

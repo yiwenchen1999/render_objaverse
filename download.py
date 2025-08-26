@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description="Objaverse Loader Script with Custo
 parser.add_argument(
     "--base_path", 
     type=str, 
-    default="/work/vig/Datasets", 
+    default="/projects/vig/Datasets", 
     help="Base path where the objaverse dataset is located"
 )
 parser.add_argument(
@@ -26,6 +26,13 @@ parser.add_argument(
     default=1000, 
     help="Number of processes to use for downloading objects"
 )
+parser.add_argument(
+    "--obj_list", 
+    type=str, 
+    default='all_objaverse_filtered_data.json', 
+    help="which list to download, default is all_objaverse_filtered_data.json"
+)
+
 args = parser.parse_args()
 
 # Set base path
@@ -55,22 +62,31 @@ index_uid_list = []
 #         index, uid = line.strip().split(",")
 #         index_uid_list.append((index, uid))
 # print(f'successfully loaded lvis id list, of length: {len(index_uid_list)}')
-import csv
-csv_path = "filtered_uids.csv"
-index_uid_list = []
-with open(csv_path, newline='') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        if len(row) == 2:
-            index, uid = row
-            index_uid_list.append((index.strip(), uid.strip()))
-# Preview
-print(f"Loaded {len(index_uid_list)} entries")
+if args.obj_list.endswith('.json'):
+    with open(args.obj_list, 'r') as f:
+        obj_list = json.load(f)
+        index_uid_list = list(obj_list.keys())
+    # Preview
+    print(f"Loaded {len(index_uid_list)} entries")
+    download_uids = index_uid_list[args.begin_uid:args.end_uid]
 
-download_uids = [uid for index, uid in index_uid_list[args.begin_uid:args.end_uid]]
+elif args.obj_list.endswith('.csv'):
+    import csv
+    csv_path = "filtered_uids.csv"
+    index_uid_list = []
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if len(row) == 2:
+                index, uid = row
+                index_uid_list.append((index.strip(), uid.strip()))
+    # Preview
+    print(f"Loaded {len(index_uid_list)} entries")
+
+    download_uids = [uid for index, uid in index_uid_list[args.begin_uid:args.end_uid]]
 objects = objaverse.load_objects(
     uids=download_uids,
-    download_processes=1,
+    download_processes=2,
 )
 print('successfully loaded objects')
 print(objects)
