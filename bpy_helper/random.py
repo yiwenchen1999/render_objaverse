@@ -59,12 +59,12 @@ def gen_pt_traj_around_origin(seed, N, min_dist_to_origin, max_dist_to_origin, t
     phi_values = [2 * math.pi * i / N for i in range(N)]
     
     # Generate distances (can be random or evenly spaced)
-    distances = [min_dist_to_origin + random.random() * (max_dist_to_origin - min_dist_to_origin) for _ in range(N)]
+    distances = (min_dist_to_origin + max_dist_to_origin) * 0.5
     
     ret = []
     for i in range(N):
         phi = phi_values[i]
-        dist = distances[i]
+        dist = distances
         
         # Convert spherical coordinates to Cartesian
         pt = [dist * math.sin(theta) * math.cos(phi), 
