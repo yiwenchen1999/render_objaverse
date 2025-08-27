@@ -200,7 +200,6 @@ def render_core(args: Options, groups_id = 0):
         # === Save all camera info for this env in a single file ===
         cameras_json_path = os.path.join(view_path, f'cameras.json')
         json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
-        intrinsics_saved = True
 
         #* 2.2 render the test views
         for eye_idx, c2w, fov in cameras_test:
