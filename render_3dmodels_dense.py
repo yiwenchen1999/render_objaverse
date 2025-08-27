@@ -291,6 +291,7 @@ if __name__ == '__main__':
             continue
         for j in range(args.num_view_groups):
             # if found a done.txt file, skip this model
+            print('rendering group:', j)
             if os.path.exists(os.path.join(args.output_dir, uid, 'done.txt')):
                 continue
             render_core(args, j)
