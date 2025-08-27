@@ -174,7 +174,7 @@ def render_core(args: Options, groups_id = 0):
                 # copy the depth map to a different name
                 depth_folder = os.path.join(view_path, 'depth')
                 os.makedirs(depth_folder, exist_ok=True)
-                depth_path = os.path.join(view_path, f'depth_00001.exr')
+                depth_path = os.path.join(view_path, f'depth_{eye_idx}0001.exr')
                 depth_cam_path = os.path.join(depth_folder, f'depth_{eye_idx}.exr')
                 shutil.copy(depth_path, depth_cam_path)
                 # Transform normals to camera space
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     print(f"Loaded {len(index_uid_list)} entries")
 
     for i in range(args.group_start, args.group_end):
-        index, uid = index_uid_list[i+10]
+        index, uid = index_uid_list[i+15]
         # index = '000-027'
         # uid = '20b23d4a703e4f7ebfb105b6b140b6fe'
         model_path = os.path.join(dataset_path, index, f'{uid}.glb')
