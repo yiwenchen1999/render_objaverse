@@ -271,7 +271,7 @@ if __name__ == '__main__':
     print(f"Loaded {len(index_uid_list)} entries")
 
     for i in range(args.group_start, args.group_end):
-        index, uid = index_uid_list[i+15]
+        index, uid = index_uid_list[i+12]
         # index = '000-027'
         # uid = '20b23d4a703e4f7ebfb105b6b140b6fe'
         model_path = os.path.join(dataset_path, index, f'{uid}.glb')
