@@ -30,8 +30,8 @@ class Options:
     num_area_lights: int = 0  # Number of area lights
     seed: Optional[int] = None  # Random seed
     num_view_groups: int = 1  # Number of view groups
-    group_start: int = 0
-    group_end: int = 10  # Group of models to render
+    group_start: int = 10
+    group_end: int = 20  # Group of models to render
     save_intrinsics: bool = True  # Whether to save intrinsics for each view
 
 
