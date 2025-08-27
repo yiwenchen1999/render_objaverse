@@ -296,4 +296,4 @@ if __name__ == '__main__':
                 continue
             render_core(args, j)
             print('render progress:', i, 'of range', args.group_start, '~', args.group_end)
-        break
+        
