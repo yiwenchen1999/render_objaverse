@@ -134,14 +134,14 @@ def render_core(args: Options, groups_id = 0):
     cameras_test = []
     for eye_idx, eye in enumerate(eyes):
         fov = 30
-        radius = random.uniform(0.8, 1.1) * (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
+        radius = (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
         eye = [x * radius for x in eye]
         c2w = look_at_to_c2w(eye)
         cameras.append((eye_idx, c2w, fov))
 
     for eye_idx, eye in enumerate(eyes_traj):
         fov = 30
-        radius = random.uniform(0.8, 1.1) * (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
+        radius = (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
         eye = [x * radius for x in eye]
         c2w = look_at_to_c2w(eye)
         cameras_test.append((eye_idx, c2w, fov))
