@@ -20,7 +20,7 @@ class Options:
     env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to env map directory
     white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
-    num_views: int = 0  # Number of views
+    num_views: int = 1  # Number of views
     num_white_pls: int = 0  # Number of white point lighting
     num_rgb_pls: int = 0  # Number of RGB point lighting
     num_multi_pls: int = 0  # Number of multi point lighting
