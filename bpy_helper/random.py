@@ -35,6 +35,50 @@ def gen_random_pts_around_origin(seed, N, min_dist_to_origin, max_dist_to_origin
         ret.append(pt)
     return ret
 
+
+def gen_pt_traj_around_origin(seed, N, min_dist_to_origin, max_dist_to_origin, theta_in_degree, z_up=True) -> list:
+    """
+    Generate a trajectory of points around the origin at a fixed theta angle
+
+    :param seed: random seed
+    :param N: number of points in the trajectory
+    :param min_dist_to_origin: minimum distance to the origin
+    :param max_dist_to_origin: maximum distance to the origin
+    :param theta_in_degree: fixed theta angle in degrees
+    :param z_up: if True, z is up, otherwise y is up
+    :return: list of point positions forming a trajectory
+    """
+    
+    if seed is not None:
+        random.seed(seed)
+    
+    # Convert theta to radians
+    theta = theta_in_degree * math.pi / 180.0
+    
+    # Generate evenly spaced phi values around the circle
+    phi_values = [2 * math.pi * i / N for i in range(N)]
+    
+    # Generate distances (can be random or evenly spaced)
+    distances = [min_dist_to_origin + random.random() * (max_dist_to_origin - min_dist_to_origin) for _ in range(N)]
+    
+    ret = []
+    for i in range(N):
+        phi = phi_values[i]
+        dist = distances[i]
+        
+        # Convert spherical coordinates to Cartesian
+        pt = [dist * math.sin(theta) * math.cos(phi), 
+              dist * math.sin(theta) * math.sin(phi),
+              dist * math.cos(theta)]
+        
+        if not z_up:
+            pt = [pt[0], pt[2], pt[1]]
+        
+        ret.append(pt)
+    
+    return ret
+
+
 def gen_clustered_pts_around_origin(seed, N, 
                                     min_dist_to_origin, 
                                     max_dist_to_origin,

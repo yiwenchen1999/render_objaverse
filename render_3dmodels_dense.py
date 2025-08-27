@@ -9,6 +9,7 @@ import sys
 import imageio
 import numpy as np
 import simple_parsing
+import shutil
 error_list = []
 
 @dataclass
@@ -31,7 +32,7 @@ class Options:
     num_view_groups: int = 1  # Number of view groups
     group_start: int = 0
     group_end: int = 10  # Group of models to render
-    save_intrinsics: bool = False  # Whether to save intrinsics for each view
+    save_intrinsics: bool = True  # Whether to save intrinsics for each view
 
 
 def render_core(args: Options, groups_id = 0):
@@ -41,7 +42,7 @@ def render_core(args: Options, groups_id = 0):
     from bpy_helper.io import render_depth_map, mat2list, array2list, render_normal_map, render_albedo_map, transform_normals_to_camera_space
     from bpy_helper.light import create_point_light, set_env_light, create_area_light
     from bpy_helper.material import create_white_diffuse_material, create_specular_ggx_material, clear_emission_and_alpha_nodes
-    from bpy_helper.random import gen_random_pts_around_origin, gen_clustered_pts_around_origin
+    from bpy_helper.random import gen_random_pts_around_origin, gen_pt_traj_around_origin
     from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
 
@@ -82,7 +83,8 @@ def render_core(args: Options, groups_id = 0):
 
     reset_scene()
 
-    # Import the 3D object
+    #& 1.preparing the scene
+    #* 1.1 prepare the 3d model
     file_path = args.three_d_model_path
     with stdout_redirected():
         import_3d_model(file_path)
@@ -109,16 +111,27 @@ def render_core(args: Options, groups_id = 0):
 
     json.dump({'scale': scale, 'offset': array2list(offset)}, open(f'{res_dir}/normalize.json', 'w'), indent=4)
 
+    #* 1.2 prepare the cameras
     eyes = gen_random_pts_around_origin(
         seed=seed_view,
         N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
         min_dist_to_origin=1.2,
         max_dist_to_origin=1.5,          # usually keep min=max for consistent radius
         min_theta_in_degree=0,           # 0 for full sphere, 10/20 for hemisphere
-        max_theta_in_degree=180,         # 90 or 70 for upper hemisphere only
+        max_theta_in_degree=120,         # 90 or 70 for upper hemisphere only
         z_up=True
     )
+    eyes_traj = gen_pt_traj_around_origin(
+        seed=seed_view,
+        N=100,
+        min_dist_to_origin=1.2,
+        max_dist_to_origin=1.5,
+        theta_in_degree=60,
+        z_up=True
+    )
+    
     cameras = []
+    cameras_test = []
     for eye_idx, eye in enumerate(eyes):
         fov = 30
         radius = random.uniform(0.8, 1.1) * (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
@@ -126,164 +139,17 @@ def render_core(args: Options, groups_id = 0):
         c2w = look_at_to_c2w(eye)
         cameras.append((eye_idx, c2w, fov))
 
-    intrinsics_saved = not args.save_intrinsics
-    # 1. Single white point light
-    white_pls = gen_random_pts_around_origin(
-        seed=seed_white_pl,
-        N=args.num_white_pls,
-        min_dist_to_origin=3.5,
-        max_dist_to_origin=5.0,
-        min_theta_in_degree=0,
-        max_theta_in_degree=85
-    )
-    for white_pl_idx in range(args.num_white_pls):
-        pl = white_pls[white_pl_idx]
-        power = random.uniform(500, 1500)
-        _point_light = create_point_light(pl, power)
-        for eye_idx, c2w, fov in cameras:
-            # Place Camera, render gt depth map
-            camera = create_camera(c2w, fov)
-            bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/view_{eye_idx}'
-            if not os.path.exists(view_path):
-                os.makedirs(view_path)
-
-            # save intrinsics property and the current camera info
-            if not intrinsics_saved:
-                with stdout_redirected():
-                    render_depth_map(view_path)
-                    render_normal_map(view_path)
-                    render_albedo_map(view_path)
-                # Transform normals to camera space
-                normals_path = os.path.join(view_path, 'normal0001.exr')
-                normals_cam_path = os.path.join(view_path, 'normal_cam.exr')
-                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
-                # save cam info
-                json.dump({'c2w': mat2list(c2w), 'fov': fov}, open(f'{view_path}/cam.json', 'w'), indent=4)
-                
-            # render the RGB image for this view and this illu
-            ref_pl_path = f'{view_path}/white_pl_{white_pl_idx}'
-            os.makedirs(ref_pl_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}',white_pl_idx)
-            # save point light info
-            json.dump({
-                'pos': array2list(pl),
-                'power': power,
-            }, open(f'{ref_pl_path}/white_pl.json', 'w'), indent=4)
-            # Clean up this camera after use
-            bpy.data.objects.remove(camera, do_unlink=True)
-        # need to save the intrinsic for every view
-        intrinsics_saved = True
+    for eye_idx, eye in enumerate(eyes_traj):
+        fov = 30
+        radius = random.uniform(0.8, 1.1) * (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
+        eye = [x * radius for x in eye]
+        c2w = look_at_to_c2w(eye)
+        cameras_test.append((eye_idx, c2w, fov))
     
-    # 2. Single RGB point light
-    rgb_pls = gen_random_pts_around_origin(
-        seed=seed_rgb_pl,
-        N=args.num_rgb_pls,
-        min_dist_to_origin=4.0,
-        max_dist_to_origin=5.0,
-        min_theta_in_degree=0,
-        max_theta_in_degree=60
-    )
-    for rgb_pl_idx in range(args.num_rgb_pls):
-        pl = rgb_pls[rgb_pl_idx]
-        power = random.uniform(900, 1500)  # slightly brighter than white light
-        rgb = [random.uniform(0, 1) for _ in range(3)]
-        create_point_light(pl, power, rgb=rgb)
-
-        for eye_idx, c2w, fov in cameras:
-            camera = create_camera(c2w, fov)
-            bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/view_{eye_idx}'
-            if not os.path.exists(view_path):
-                os.makedirs(view_path)
-
-            # save intrinsics property and the current camera info
-            if not intrinsics_saved:
-                with stdout_redirected():
-                    render_depth_map(view_path)
-                    render_normal_map(view_path)
-                    render_albedo_map(view_path)
-                # Transform normals to camera space
-                normals_path = os.path.join(view_path, 'normal0001.exr')
-                normals_cam_path = os.path.join(view_path, 'normal_cam.exr')
-                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
-                # save cam info
-                json.dump({'c2w': mat2list(c2w), 'fov': fov}, open(f'{view_path}/cam.json', 'w'), indent=4)
-
-            ref_pl_path = f'{view_path}/rgb_pl_{rgb_pl_idx}'
-            os.makedirs(ref_pl_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}', rgb_pl_idx)
-
-            json.dump({
-                'pos': array2list(pl),
-                'power': power,
-                'color': rgb,
-            }, open(f'{ref_pl_path}/rgb_pl.json', 'w'), indent=4)
-
-            bpy.data.objects.remove(camera, do_unlink=True)
-        # need to save the intrinsic for every view
-        intrinsics_saved = True
-
-    # 3. multi point light
-    multi_pls = gen_random_pts_around_origin(
-        seed=seed_multi_pl,
-        N=args.num_multi_pls * args.max_pl_num,
-        min_dist_to_origin=3.0,
-        max_dist_to_origin=5.0,
-        min_theta_in_degree=0,
-        max_theta_in_degree=85
-    )
-
-    for multi_pl_idx in range(args.num_multi_pls):
-        pls = multi_pls[multi_pl_idx * args.max_pl_num: (multi_pl_idx + 1) * args.max_pl_num]
-        powers = [random.uniform(500, 1500) for _ in range(args.max_pl_num)]
-        colors = []
-        for pl_idx in range(args.max_pl_num):
-            if random.random() < 0.5:
-                rgb = [1.0, 1.0, 1.0]  # white
-            else:
-                rgb = [random.uniform(0.4, 1.0) for _ in range(3)]  # colored
-            colors.append(rgb)
-            create_point_light(pls[pl_idx], powers[pl_idx], rgb=rgb, keep_other_lights=pl_idx > 0)
-
-        for eye_idx, c2w, fov in cameras:
-            camera = create_camera(c2w, fov)
-            bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/view_{eye_idx}'
-            if not os.path.exists(view_path):
-                os.makedirs(view_path)
-
-            # save intrinsics property and the current camera info
-            if not intrinsics_saved:
-                with stdout_redirected():
-                    render_depth_map(view_path)
-                    render_normal_map(view_path)
-                    render_albedo_map(view_path)
-                # Transform normals to camera space
-                normals_path = os.path.join(view_path, 'normal0001.exr')
-                normals_cam_path = os.path.join(view_path, 'normal_cam.exr')
-                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
-                # save cam info
-                json.dump({'c2w': mat2list(c2w), 'fov': fov}, open(f'{view_path}/cam.json', 'w'), indent=4)
-
-            ref_pl_path = f'{view_path}/multi_pl_{multi_pl_idx}'
-            os.makedirs(ref_pl_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{ref_pl_path}', multi_pl_idx)
-
-            json.dump({
-                'pos': mat2list(pls),
-                'power': powers,
-                'color': colors,
-            }, open(f'{ref_pl_path}/multi_pl.json', 'w'), indent=4)
-
-            bpy.data.objects.remove(camera, do_unlink=True)
-        # need to save the intrinsic for every view
-        intrinsics_saved = True
-
-    # 4. env lighting white
+    #& 2. start rendering
+    intrinsics_saved = not args.save_intrinsics
+    #* 2.1 render the white env lighting
+    #todo? add the other lighting later, refern to the standard rendering script
     for env_idx in range(args.num_white_envs):
         env_map = random.choice(env_map_list)
         env_map_path = f'{args.white_env_map_dir_path}/{env_map}_8k.exr'
@@ -296,21 +162,25 @@ def render_core(args: Options, groups_id = 0):
         for eye_idx, c2w, fov in cameras:
             camera = create_camera(c2w, fov)
             bpy.context.scene.camera = camera
-            view_path = f'{res_dir}'
+            view_path = f'{res_dir}/train'
             if not os.path.exists(view_path):
                 os.makedirs(view_path)
 
             if not intrinsics_saved:
                 with stdout_redirected():
-                    render_depth_map(view_path)
-                    render_normal_map(view_path)
-                    render_albedo_map(view_path)
+                    render_depth_map(view_path, file_prefix=f'depth_{eye_idx}')
+                    #^ render_normal_map(view_path)
+                    #^ render_albedo_map(view_path)
+                # copy the depth map to a different name
+                depth_folder = os.path.join(view_path, 'depth')
+                os.makedirs(depth_folder, exist_ok=True)
+                depth_path = os.path.join(view_path, f'depth0001.exr')
+                depth_cam_path = os.path.join(depth_folder, f'depth_{eye_idx}.exr')
+                shutil.copy(depth_path, depth_cam_path)
                 # Transform normals to camera space
-                normals_path = os.path.join(view_path, 'normal0001.exr')
-                normals_cam_path = os.path.join(view_path, f'normal_cam_{eye_idx}.exr')
-                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
-                # json.dump({'c2w': mat2list(c2w), 'fov': fov}, open(f'{view_path}/cam.json', 'w'), indent=4)
-
+                #^ normals_path = os.path.join(view_path, 'normal0001.exr')
+                #^ normals_cam_path = os.path.join(view_path, f'normal_cam_{eye_idx}.exr')
+                #^ transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
             # Instead of saving cam.json per view, collect the info:
             cam_entry = {
                 'eye_idx': eye_idx,
@@ -325,113 +195,58 @@ def render_core(args: Options, groups_id = 0):
             with stdout_redirected():
                 render_rgb_and_hint(f'{env_path}', eye_idx)
 
-            # json.dump({
-            #     'env_map': env_map,
-            #     'rotation_euler': rotation_euler,
-            #     'strength': strength,
-            # }, open(f'{env_path}/white_env.json', 'w'), indent=4)
-
             bpy.data.objects.remove(camera, do_unlink=True)
 
         # === Save all camera info for this env in a single file ===
-        cameras_json_path = os.path.join(res_dir, f'white_env_{env_idx}_cameras.json')
+        cameras_json_path = os.path.join(view_path, f'cameras.json')
         json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
         intrinsics_saved = True
 
-
-    # 5. env lighting colored
-    for env_map_idx in range(args.num_env_lights):
-        env_map = random.choice(env_map_list)
-        env_map_path = f'{args.env_map_dir_path}/{env_map}.exr'
-        rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
-        strength = 1.0
-        set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
-
-        for eye_idx, c2w, fov in cameras:
+        #* 2.2 render the test views
+        for eye_idx, c2w, fov in cameras_test:
             camera = create_camera(c2w, fov)
             bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/view_{eye_idx}'
+            view_path = f'{res_dir}/test'
             if not os.path.exists(view_path):
                 os.makedirs(view_path)
 
             if not intrinsics_saved:
                 with stdout_redirected():
-                    render_depth_map(view_path)
-                    render_normal_map(view_path)
-                    render_albedo_map(view_path)
+                    render_depth_map(view_path, file_prefix=f'depth_{eye_idx}')
+                    #^ render_normal_map(view_path)
+                    #^ render_albedo_map(view_path)
+                # copy the depth map to a different name
+                depth_folder = os.path.join(view_path, 'depth')
+                os.makedirs(depth_folder, exist_ok=True)
+                depth_path = os.path.join(view_path, f'depth0001.exr')
+                depth_cam_path = os.path.join(depth_folder, f'depth_{eye_idx}.exr')
+                shutil.copy(depth_path, depth_cam_path)
                 # Transform normals to camera space
-                normals_path = os.path.join(view_path, 'normal0001.exr')
-                normals_cam_path = os.path.join(view_path, 'normal_cam.exr')
-                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
+                #^ normals_path = os.path.join(view_path, 'normal0001.exr')
+                #^ normals_cam_path = os.path.join(view_path, f'normal_cam_{eye_idx}.exr')
+                #^ transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
+            # Instead of saving cam.json per view, collect the info:
+            cam_entry = {
+                'eye_idx': eye_idx,
+                'c2w': mat2list(c2w),
+                'fov': fov,
+                # Optionally add more intrinsics here (image size, lens, etc.)
+            }
+            all_cams.append(cam_entry)
 
-                json.dump({'c2w': mat2list(c2w), 'fov': fov}, open(f'{view_path}/cam.json', 'w'), indent=4)
-
-            env_path = f'{view_path}/env_{env_map_idx}'
+            env_path = f'{view_path}/white_env_{env_idx}'
             os.makedirs(env_path, exist_ok=True)
             with stdout_redirected():
-                render_rgb_and_hint(f'{env_path}')
-
-            json.dump({
-                'env_map': env_map,
-                'rotation_euler': rotation_euler,
-                'strength': strength,
-            }, open(f'{env_path}/env.json', 'w'), indent=4)
+                render_rgb_and_hint(f'{env_path}', eye_idx)
 
             bpy.data.objects.remove(camera, do_unlink=True)
+            
+        # === Save all camera info for this env in a single file ===
+        cameras_json_path = os.path.join(view_path, f'cameras.json')
+        json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
+
         intrinsics_saved = True
 
-    # 6. area light
-    area_light_positions = gen_random_pts_around_origin(
-        seed=seed_area,
-        N=args.num_area_lights,
-        min_dist_to_origin=3.0,
-        max_dist_to_origin=6.0,
-        min_theta_in_degree=0,
-        max_theta_in_degree=85
-    )
-    for area_light_idx in range(args.num_area_lights):
-        area_light_pos = area_light_positions[area_light_idx]
-        area_light_power = random.uniform(700, 1500)
-        area_light_size = random.uniform(5., 10.)
-        if random.random() < 0.75:
-            color = [1.0, 1.0, 1.0]  # white
-        else:
-            color = [random.uniform(0.4, 1.0) for _ in range(3)]  # colored
-
-        _area_light = create_area_light(area_light_pos, area_light_power, area_light_size, color=color)
-
-        for eye_idx, c2w, fov in cameras:
-            camera = create_camera(c2w, fov)
-            bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/view_{eye_idx}'
-            if not os.path.exists(view_path):
-                os.makedirs(view_path)
-
-            if not intrinsics_saved:
-                with stdout_redirected():
-                    render_depth_map(view_path)
-                    render_normal_map(view_path)
-                    render_albedo_map(view_path)
-                # Transform normals to camera space
-                normals_path = os.path.join(view_path, 'normal0001.exr')
-                normals_cam_path = os.path.join(view_path, 'normal_cam.exr')
-                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
-                json.dump({'c2w': mat2list(c2w), 'fov': fov}, open(f'{view_path}/cam.json', 'w'), indent=4)
-
-            area_path = f'{view_path}/area_{area_light_idx}'
-            os.makedirs(area_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{area_path}')
-
-            json.dump({
-                'pos': array2list(area_light_pos),
-                'power': area_light_power,
-                'size': area_light_size,
-                'color': color,
-            }, open(f'{area_path}/area.json', 'w'), indent=4)
-
-            bpy.data.objects.remove(camera, do_unlink=True)
-        intrinsics_saved = True
     # store a file indicating the end of the rendering
     with open(os.path.join(res_dir, 'done.txt'), 'w') as f:
         f.write('done')
@@ -444,7 +259,7 @@ if __name__ == '__main__':
     args: Options = simple_parsing.parse(Options)
     print(Options)
     import csv
-    csv_path = "../filtered_uids.csv"
+    csv_path = "test_obj.csv"
     index_uid_list = []
     with open(csv_path, newline='') as csvfile:
         reader = csv.reader(csvfile)
@@ -456,9 +271,9 @@ if __name__ == '__main__':
     print(f"Loaded {len(index_uid_list)} entries")
 
     for i in range(args.group_start, args.group_end):
-        index, uid = index_uid_list[i+10]
-        index = '000-027'
-        uid = '20b23d4a703e4f7ebfb105b6b140b6fe'
+        index, uid = index_uid_list[i]
+        # index = '000-027'
+        # uid = '20b23d4a703e4f7ebfb105b6b140b6fe'
         model_path = os.path.join(dataset_path, index, f'{uid}.glb')
         # model_path = os.path.join(dataset_path,'000-000', f'000074a334c541878360457c672b6c2e.glb')
         args.three_d_model_path = model_path
