@@ -20,7 +20,7 @@ class Options:
     env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to env map directory
     white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
-    num_views: int = 1  # Number of views
+    num_views: int = 200  # Number of views
     num_white_pls: int = 0  # Number of white point lighting
     num_rgb_pls: int = 0  # Number of RGB point lighting
     num_multi_pls: int = 0  # Number of multi point lighting
@@ -30,8 +30,8 @@ class Options:
     num_area_lights: int = 0  # Number of area lights
     seed: Optional[int] = None  # Random seed
     num_view_groups: int = 1  # Number of view groups
-    group_start: int = 10
-    group_end: int = 20  # Group of models to render
+    group_start: int = 0
+    group_end: int = 10  # Group of models to render
     save_intrinsics: bool = True  # Whether to save intrinsics for each view
 
 
