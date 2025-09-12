@@ -20,7 +20,7 @@ class Options:
     env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to env map directory
     white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
-    num_views: int = 5  # Number of views
+    num_views: int = 200  # Number of views
     num_white_pls: int = 4  # Number of white point lighting
     num_rgb_pls: int = 4  # Number of RGB point lighting
     num_multi_pls: int = 4  # Number of multi point lighting
@@ -123,7 +123,7 @@ def render_core(args: Options, groups_id = 0):
     )
     eyes_traj = gen_pt_traj_around_origin(
         seed=seed_view,
-        N=10,
+        N=100,
         min_dist_to_origin=1.0,
         max_dist_to_origin=1.0,
         theta_in_degree=60,
