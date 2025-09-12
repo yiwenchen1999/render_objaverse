@@ -18,9 +18,9 @@ class Options:
     three_d_model_path: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/000-091/c0a1e0cd1c744f55b5c7df7e8f43eba9.glb' # Base path to 3D models
     env_map_list_json: str = './assets/hdri/polyhaven_hdris.json'  # Path to env map list
     env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to env map directory
-    white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
+    white_env_map_dir_path: str = './'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
-    num_views: int = 200  # Number of views
+    num_views: int = 5  # Number of views
     num_white_pls: int = 4  # Number of white point lighting
     num_rgb_pls: int = 4  # Number of RGB point lighting
     num_multi_pls: int = 4  # Number of multi point lighting
@@ -123,7 +123,7 @@ def render_core(args: Options, groups_id = 0):
     )
     eyes_traj = gen_pt_traj_around_origin(
         seed=seed_view,
-        N=100,
+        N=10,
         min_dist_to_origin=1.0,
         max_dist_to_origin=1.0,
         theta_in_degree=60,
@@ -148,11 +148,11 @@ def render_core(args: Options, groups_id = 0):
     
     #& 2. start rendering
     intrinsics_saved = not args.save_intrinsics
-    #* 2.1 render the white env lighting
-    #todo? add the other lighting later, refern to the standard rendering script
+    
+    #* 2.1 render the white env lighting first
     for env_idx in range(args.num_white_envs):
-        env_map = random.choice(env_map_list)
-        env_map_path = f'{args.white_env_map_dir_path}/{env_map}_8k.exr'
+        # Use the white environment map we created
+        env_map_path = f'{args.white_env_map_dir_path}/white_env_8k.exr'
         rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
         strength = 1.0
         set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
@@ -202,7 +202,6 @@ def render_core(args: Options, groups_id = 0):
                 'eye_idx': eye_idx,
                 'c2w': mat2list(c2w),
                 'fov': fov,
-                # Optionally add more intrinsics here (image size, lens, etc.)
             }
             all_cams.append(cam_entry)
 
@@ -217,7 +216,7 @@ def render_core(args: Options, groups_id = 0):
         cameras_json_path = os.path.join(view_path, f'cameras.json')
         json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
 
-        #* 2.2 render the test views
+        #* render the test views for white env lighting
         for eye_idx, c2w, fov in cameras_test:
             camera = create_camera(c2w, fov)
             bpy.context.scene.camera = camera
@@ -228,8 +227,8 @@ def render_core(args: Options, groups_id = 0):
             if not intrinsics_saved:
                 with stdout_redirected():
                     render_depth_map(view_path, file_prefix=f'depth_{eye_idx}')
-                    #^ render_normal_map(view_path)
-                    #^ render_albedo_map(view_path)
+                    render_normal_map(view_path)
+                    render_albedo_map(view_path)
                 # copy the depth map to a different name
                 depth_folder = os.path.join(view_path, 'depth')
                 os.makedirs(depth_folder, exist_ok=True)
@@ -237,15 +236,30 @@ def render_core(args: Options, groups_id = 0):
                 depth_cam_path = os.path.join(depth_folder, f'depth_{eye_idx}.exr')
                 shutil.copy(depth_path, depth_cam_path)
                 # Transform normals to camera space
-                #^ normals_path = os.path.join(view_path, 'normal0001.exr')
-                #^ normals_cam_path = os.path.join(view_path, f'normal_cam_{eye_idx}.exr')
-                #^ transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
+                normals_path = os.path.join(view_path, 'normal0001.exr')
+                normal_folder = os.path.join(view_path, 'normal')
+                os.makedirs(normal_folder, exist_ok=True)
+                normals_cam_path = os.path.join(normal_folder, f'normal_cam_{eye_idx}.exr')
+                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
+                albedo_path = os.path.join(view_path, 'albedo0001.png')
+                albedo_folder = os.path.join(view_path, 'albedo')
+                os.makedirs(albedo_folder, exist_ok=True)
+                albedo_cam_path = os.path.join(albedo_folder, f'albedo_cam_{eye_idx}.png')
+                shutil.copy(albedo_path, albedo_cam_path)
+                # clean up the files before they got moved:
+                os.remove(os.path.join(view_path, f'depth_{eye_idx}0001.exr'))
+                os.remove(os.path.join(view_path, 'normal0001.exr'))
+                os.remove(os.path.join(view_path, 'albedo0001.png'))
+                # remove ant files with "rgb_for_" prefix
+                for file in os.listdir(view_path):
+                    if file.startswith('rgb_for_'):
+                        os.remove(os.path.join(view_path, file))
+
             # Instead of saving cam.json per view, collect the info:
             cam_entry = {
                 'eye_idx': eye_idx,
                 'c2w': mat2list(c2w),
                 'fov': fov,
-                # Optionally add more intrinsics here (image size, lens, etc.)
             }
             all_cams.append(cam_entry)
 
@@ -260,7 +274,273 @@ def render_core(args: Options, groups_id = 0):
         cameras_json_path = os.path.join(view_path, f'cameras.json')
         json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
 
+        # save the env map
+        json.dump({
+            'env_map': 'white_env_8k.exr',
+            'rotation_euler': rotation_euler,
+            'strength': strength,
+            }, open(f'{env_path}/white_env.json', 'w'), indent=4)
+
         intrinsics_saved = True
+
+    #* 2.2 render the white point lighting
+    white_pls = gen_random_pts_around_origin(
+        seed=seed_white_pl,
+        N=args.num_white_pls,
+        min_dist_to_origin=3.5,
+        max_dist_to_origin=5.0,
+        min_theta_in_degree=0,
+        max_theta_in_degree=85
+    )
+    for white_pl_idx in range(args.num_white_pls):
+        pl = white_pls[white_pl_idx]
+        power = random.uniform(500, 1500)
+        _point_light = create_point_light(pl, power)
+        
+        for eye_idx, c2w, fov in cameras:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/train'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/white_pl_{white_pl_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        #* render the test views for white point lighting
+        for eye_idx, c2w, fov in cameras_test:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/test'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/white_pl_{white_pl_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        # save the point light info
+        json.dump({
+            'pos': array2list(pl),
+            'power': power,
+        }, open(f'{env_path}/white_pl.json', 'w'), indent=4)
+
+    #* 2.3 render the RGB point lighting
+    rgb_pls = gen_random_pts_around_origin(
+        seed=seed_rgb_pl,
+        N=args.num_rgb_pls,
+        min_dist_to_origin=4.0,
+        max_dist_to_origin=5.0,
+        min_theta_in_degree=0,
+        max_theta_in_degree=60
+    )
+    for rgb_pl_idx in range(args.num_rgb_pls):
+        pl = rgb_pls[rgb_pl_idx]
+        power = random.uniform(900, 1500)  # slightly brighter than white light
+        rgb = [random.uniform(0, 1) for _ in range(3)]
+        create_point_light(pl, power, rgb=rgb)
+
+        for eye_idx, c2w, fov in cameras:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/train'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/rgb_pl_{rgb_pl_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        #* render the test views for RGB point lighting
+        for eye_idx, c2w, fov in cameras_test:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/test'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/rgb_pl_{rgb_pl_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        # save the RGB point light info
+        json.dump({
+            'pos': array2list(pl),
+            'power': power,
+            'color': rgb,
+        }, open(f'{env_path}/rgb_pl.json', 'w'), indent=4)
+
+    #* 2.4 render the multi point lighting
+    multi_pls = gen_random_pts_around_origin(
+        seed=seed_multi_pl,
+        N=args.num_multi_pls * args.max_pl_num,
+        min_dist_to_origin=3.0,
+        max_dist_to_origin=5.0,
+        min_theta_in_degree=0,
+        max_theta_in_degree=85
+    )
+
+    for multi_pl_idx in range(args.num_multi_pls):
+        pls = multi_pls[multi_pl_idx * args.max_pl_num: (multi_pl_idx + 1) * args.max_pl_num]
+        powers = [random.uniform(500, 1500) for _ in range(args.max_pl_num)]
+        colors = []
+        for pl_idx in range(args.max_pl_num):
+            if random.random() < 0.5:
+                rgb = [1.0, 1.0, 1.0]  # white
+            else:
+                rgb = [random.uniform(0.4, 1.0) for _ in range(3)]  # colored
+            colors.append(rgb)
+            create_point_light(pls[pl_idx], powers[pl_idx], rgb=rgb, keep_other_lights=pl_idx > 0)
+
+        for eye_idx, c2w, fov in cameras:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/train'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/multi_pl_{multi_pl_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        #* render the test views for multi point lighting
+        for eye_idx, c2w, fov in cameras_test:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/test'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/multi_pl_{multi_pl_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        # save the multi point light info
+        json.dump({
+            'pos': mat2list(pls),
+            'power': powers,
+            'color': colors,
+        }, open(f'{env_path}/multi_pl.json', 'w'), indent=4)
+
+    #* 2.5 render the colored env lighting
+    for env_map_idx in range(args.num_env_lights):
+        env_map = random.choice(env_map_list)
+        env_map_path = f'{args.env_map_dir_path}/{env_map}_8k.exr'
+        rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
+        strength = 1.0
+        set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
+
+        for eye_idx, c2w, fov in cameras:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/train'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/env_{env_map_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        #* render the test views for colored env lighting
+        for eye_idx, c2w, fov in cameras_test:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/test'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/env_{env_map_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        # save the env map
+        json.dump({
+            'env_map': env_map,
+            'rotation_euler': rotation_euler,
+            'strength': strength,
+        }, open(f'{env_path}/env.json', 'w'), indent=4)
+
+    #* 2.6 render the area lighting
+    area_light_positions = gen_random_pts_around_origin(
+        seed=seed_area,
+        N=args.num_area_lights,
+        min_dist_to_origin=3.0,
+        max_dist_to_origin=6.0,
+        min_theta_in_degree=0,
+        max_theta_in_degree=85
+    )
+    for area_light_idx in range(args.num_area_lights):
+        area_light_pos = area_light_positions[area_light_idx]
+        area_light_power = random.uniform(700, 1500)
+        area_light_size = random.uniform(5., 10.)
+        if random.random() < 0.75:
+            color = [1.0, 1.0, 1.0]  # white
+        else:
+            color = [random.uniform(0.4, 1.0) for _ in range(3)]  # colored
+
+        _area_light = create_area_light(area_light_pos, area_light_power, area_light_size, color=color)
+
+        for eye_idx, c2w, fov in cameras:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/train'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/area_{area_light_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        #* render the test views for area lighting
+        for eye_idx, c2w, fov in cameras_test:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/test'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/area_{area_light_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        # save the area light info
+        json.dump({
+            'pos': array2list(area_light_pos),
+            'power': area_light_power,
+            'size': area_light_size,
+            'color': color,
+        }, open(f'{env_path}/area.json', 'w'), indent=4)
 
     # store a file indicating the end of the rendering
     with open(os.path.join(res_dir, 'done.txt'), 'w') as f:
