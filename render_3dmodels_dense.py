@@ -18,7 +18,7 @@ class Options:
     three_d_model_path: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/000-091/c0a1e0cd1c744f55b5c7df7e8f43eba9.glb' # Base path to 3D models
     env_map_list_json: str = './assets/hdri/polyhaven_hdris.json'  # Path to env map list
     env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to env map directory
-    white_env_map_dir_path: str = './'  # Path to white env map directory
+    white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
     num_views: int = 5  # Number of views
     num_white_pls: int = 4  # Number of white point lighting
