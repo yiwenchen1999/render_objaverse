@@ -191,7 +191,7 @@ def render_core(args: Options, groups_id = 0):
                 # clean up the files before they got moved:
                 os.remove(os.path.join(view_path, f'depth_{eye_idx}0001.exr'))
                 os.remove(os.path.join(view_path, 'normal0001.exr'))
-                os.remove(os.path.join(view_path, 'albedo0001.exr'))
+                os.remove(os.path.join(view_path, 'albedo0001.png'))
                 # remove ant files with "rgb_for_" prefix
                 for file in os.listdir(view_path):
                     if file.startswith('rgb_for_'):
