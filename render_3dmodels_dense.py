@@ -180,10 +180,12 @@ def render_core(args: Options, groups_id = 0):
                 # Transform normals to camera space
                 normals_path = os.path.join(view_path, 'normal0001.exr')
                 normal_folder = os.path.join(view_path, 'normal')
+                os.makedirs(normal_folder, exist_ok=True)
                 normals_cam_path = os.path.join(normal_folder, f'normal_cam_{eye_idx}.exr')
                 transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
                 albedo_path = os.path.join(view_path, 'albedo0001.exr')
                 albedo_folder = os.path.join(view_path, 'albedo')
+                os.makedirs(albedo_folder, exist_ok=True)
                 albedo_cam_path = os.path.join(albedo_folder, f'albedo_cam_{eye_idx}.exr')
                 shutil.copy(albedo_path, albedo_cam_path)
                 # clean up the files before they got moved:
