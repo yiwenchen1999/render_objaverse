@@ -21,13 +21,13 @@ class Options:
     white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
     num_views: int = 200  # Number of views
-    num_white_pls: int = 0  # Number of white point lighting
-    num_rgb_pls: int = 0  # Number of RGB point lighting
-    num_multi_pls: int = 0  # Number of multi point lighting
+    num_white_pls: int = 4  # Number of white point lighting
+    num_rgb_pls: int = 4  # Number of RGB point lighting
+    num_multi_pls: int = 4  # Number of multi point lighting
     max_pl_num: int = 3  # Maximum number of point lights
-    num_white_envs: int = 1  # Number of white env lighting
-    num_env_lights: int = 0  # Number of env lighting
-    num_area_lights: int = 0  # Number of area lights
+    num_white_envs: int = 0  # Number of white env lighting
+    num_env_lights: int = 4  # Number of env lighting
+    num_area_lights: int = 4  # Number of area lights
     seed: Optional[int] = None  # Random seed
     num_view_groups: int = 1  # Number of view groups
     group_start: int = 0
@@ -169,8 +169,8 @@ def render_core(args: Options, groups_id = 0):
             if not intrinsics_saved:
                 with stdout_redirected():
                     render_depth_map(view_path, file_prefix=f'depth_{eye_idx}')
-                    #^ render_normal_map(view_path)
-                    #^ render_albedo_map(view_path)
+                    render_normal_map(view_path)
+                    render_albedo_map(view_path)
                 # copy the depth map to a different name
                 depth_folder = os.path.join(view_path, 'depth')
                 os.makedirs(depth_folder, exist_ok=True)
@@ -178,9 +178,23 @@ def render_core(args: Options, groups_id = 0):
                 depth_cam_path = os.path.join(depth_folder, f'depth_{eye_idx}.exr')
                 shutil.copy(depth_path, depth_cam_path)
                 # Transform normals to camera space
-                #^ normals_path = os.path.join(view_path, 'normal0001.exr')
-                #^ normals_cam_path = os.path.join(view_path, f'normal_cam_{eye_idx}.exr')
-                #^ transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
+                normals_path = os.path.join(view_path, 'normal0001.exr')
+                normal_folder = os.path.join(view_path, 'normal')
+                normals_cam_path = os.path.join(normal_folder, f'normal_cam_{eye_idx}.exr')
+                transform_normals_to_camera_space(normals_path, c2w, normals_cam_path)
+                albedo_path = os.path.join(view_path, 'albedo0001.exr')
+                albedo_folder = os.path.join(view_path, 'albedo')
+                albedo_cam_path = os.path.join(albedo_folder, f'albedo_cam_{eye_idx}.exr')
+                shutil.copy(albedo_path, albedo_cam_path)
+                # clean up the files before they got moved:
+                os.remove(os.path.join(view_path, f'depth_{eye_idx}0001.exr'))
+                os.remove(os.path.join(view_path, 'normal0001.exr'))
+                os.remove(os.path.join(view_path, 'albedo0001.exr'))
+                # remove ant files with "rgb_for_" prefix
+                for file in os.listdir(view_path):
+                    if file.startswith('rgb_for_'):
+                        os.remove(os.path.join(view_path, file))
+
             # Instead of saving cam.json per view, collect the info:
             cam_entry = {
                 'eye_idx': eye_idx,
