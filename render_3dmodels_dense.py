@@ -25,7 +25,7 @@ class Options:
     num_rgb_pls: int = 4  # Number of RGB point lighting
     num_multi_pls: int = 4  # Number of multi point lighting
     max_pl_num: int = 3  # Maximum number of point lights
-    num_white_envs: int = 0  # Number of white env lighting
+    num_white_envs: int = 1  # Number of white env lighting
     num_env_lights: int = 4  # Number of env lighting
     num_area_lights: int = 4  # Number of area lights
     seed: Optional[int] = None  # Random seed
