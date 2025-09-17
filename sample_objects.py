@@ -19,14 +19,14 @@ def create_directories():
 
 def sample_from_json(json_file, num_samples=20):
     """从JSON文件中采样对象"""
-    print(f"从 {json_file} 中采样 {num_samples} 个对象...")
+    print(f"从 {json_file} 中取前 {num_samples} 个对象...")
     
     with open(json_file, 'r') as f:
         data = json.load(f)
     
-    # 随机采样
+    # 取前N个对象
     all_keys = list(data.keys())
-    sampled_keys = random.sample(all_keys, min(num_samples, len(all_keys)))
+    sampled_keys = all_keys[:min(num_samples, len(all_keys))]
     
     source_base = "/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/"
     target_dir = "./filtered_from_json"
@@ -49,14 +49,14 @@ def sample_from_json(json_file, num_samples=20):
 
 def sample_from_csv(csv_file, num_samples=20):
     """从CSV文件中采样对象"""
-    print(f"从 {csv_file} 中采样 {num_samples} 个对象...")
+    print(f"从 {csv_file} 中取前 {num_samples} 个对象...")
     
     with open(csv_file, 'r') as f:
         reader = csv.reader(f)
         rows = list(reader)
     
-    # 随机采样
-    sampled_rows = random.sample(rows, min(num_samples, len(rows)))
+    # 取前N个对象
+    sampled_rows = rows[:min(num_samples, len(rows))]
     
     source_base = "/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/"
     target_dir = "./filtered_from_csv"
@@ -83,10 +83,7 @@ def sample_from_csv(csv_file, num_samples=20):
 
 def main():
     """主函数"""
-    print("开始采样对象...")
-    
-    # 设置随机种子以确保可重现性
-    random.seed(42)
+    print("开始取前20个对象...")
     
     # 创建目标目录
     create_directories()
