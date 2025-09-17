@@ -81,6 +81,7 @@ def sample_from_json(json_file, num_samples=20):
     missing_uids = []
     for key in sampled_keys:
         relative_path = data[key]  # 例如: "glbs/000-019/2d0dcf63909f40b0b4546726606414e7.glb"
+        relative_path = relative_path.replace('glbs/', '')
         source_path = os.path.join(source_base, relative_path)
         if not os.path.exists(source_path):
             missing_uids.append(key)
