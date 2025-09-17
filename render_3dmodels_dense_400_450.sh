@@ -5,7 +5,7 @@
 #SBATCH --job-name=render_objaverse_400_450
 #SBATCH --mem=32
 #SBATCH --ntasks=8
-#SBATCH --gpus=1
+#SBATCH --gres=gpu:1
 #SBATCH --output=myjob.render_objaverse_400_450.out
 #SBATCH --error=myjob.render_objaverse_400_450.err
 
