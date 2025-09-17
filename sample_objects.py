@@ -74,14 +74,13 @@ def sample_from_json(json_file, num_samples=20):
     all_keys = list(data.keys())
     sampled_keys = all_keys[:min(num_samples, len(all_keys))]
     
-    source_base = "/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/"
+    source_base = "/projects/vig/Datasets/objaverse/hf-objaverse-v1/"
     target_dir = "./filtered_from_json"
     
     # 第一遍检查：找出缺失的文件
     missing_uids = []
     for key in sampled_keys:
         relative_path = data[key]  # 例如: "glbs/000-019/2d0dcf63909f40b0b4546726606414e7.glb"
-        relative_path = relative_path.replace('glbs/', '')
         source_path = os.path.join(source_base, relative_path)
         if not os.path.exists(source_path):
             missing_uids.append(key)
