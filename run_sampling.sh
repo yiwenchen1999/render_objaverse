@@ -23,6 +23,12 @@ if [ ! -f "filtered_uids.csv" ]; then
     exit 1
 fi
 
+if [ ! -f "download.py" ]; then
+    echo "错误: 找不到 download.py 文件"
+    echo "请确保下载脚本存在以支持自动下载功能"
+    exit 1
+fi
+
 # 检查源数据目录是否存在
 SOURCE_DIR="/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/"
 if [ ! -d "$SOURCE_DIR" ]; then
