@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --time==8:00:00
+#SBATCH --time=8:00:00
 #SBATCH --job-name=render_objaverse_450_500
 #SBATCH --mem=32
 #SBATCH --ntasks=8
