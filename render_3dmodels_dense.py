@@ -217,6 +217,7 @@ def render_core(args: Options, groups_id = 0):
         json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
 
         #* render the test views for white env lighting
+        all_cams_test = []
         for eye_idx, c2w, fov in cameras_test:
             camera = create_camera(c2w, fov)
             bpy.context.scene.camera = camera
@@ -261,7 +262,7 @@ def render_core(args: Options, groups_id = 0):
                 'c2w': mat2list(c2w),
                 'fov': fov,
             }
-            all_cams.append(cam_entry)
+            all_cams_test.append(cam_entry)
 
             env_path = f'{view_path}/white_env_{env_idx}'
             os.makedirs(env_path, exist_ok=True)
@@ -272,7 +273,7 @@ def render_core(args: Options, groups_id = 0):
             
         # === Save all camera info for this env in a single file ===
         cameras_json_path = os.path.join(view_path, f'cameras.json')
-        json.dump(all_cams, open(cameras_json_path, 'w'), indent=4)
+        json.dump(all_cams_test, open(cameras_json_path, 'w'), indent=4)
 
         # save the env map
         json.dump({
