@@ -1,11 +1,10 @@
 #!/bin/bash
-#SBATCH --partition=gpu
+#SBATCH --partition=short
 #SBATCH --nodes=1
 #SBATCH --time=8:00:00
 #SBATCH --job-name=render_objaverse_250_300
 #SBATCH --mem=32
 #SBATCH --ntasks=8
-#SBATCH --gres=gpu:1
 #SBATCH --output=myjob.render_objaverse_250_300.out
 #SBATCH --error=myjob.render_objaverse_250_300.err
 
