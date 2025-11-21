@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --time=24:00:00
+#SBATCH --time=8:00:00
 #SBATCH --job-name=download_render_lvis_0_1000
-#SBATCH --mem=64
+#SBATCH --mem=4
 #SBATCH --ntasks=8
 #SBATCH --gres=gpu:1
 #SBATCH --output=myjob.download_render_lvis_0_1000.out
