@@ -161,35 +161,61 @@ if __name__ == '__main__':
     # 确保输出目录存在
     os.makedirs(args.output_dir, exist_ok=True)
 
+    # 统计信息
+    total_count = min(args.group_end, len(index_uid_list)) - args.group_start
+    skipped_existing = 0
+    skipped_missing = 0
+    skipped_errors = 0
+    rendered_count = 0
+    failed_count = 0
+
     # 处理指定范围的对象
     for i in range(args.group_start, min(args.group_end, len(index_uid_list))):
         folder, uid = index_uid_list[i]
         model_path = os.path.join(args.dataset_path, folder, f'{uid}.glb')
 
-        # 检查模型文件是否存在
-        if not os.path.exists(model_path):
-            print(f'警告: 模型文件不存在，跳过: {model_path}')
-            continue
-
-        # 检查预览图是否已存在
+        # 检查预览图是否已存在（优先检查，避免不必要的文件系统操作）
         output_path = os.path.join(args.output_dir, f'{uid}.png')
         if os.path.exists(output_path):
-            print(f'预览图已存在，跳过: {uid}')
+            skipped_existing += 1
+            if skipped_existing % 100 == 0:  # 每100个打印一次，避免输出过多
+                print(f'已跳过 {skipped_existing} 个已存在的预览图...')
+            continue
+
+        # 检查模型文件是否存在
+        if not os.path.exists(model_path):
+            skipped_missing += 1
+            print(f'警告: 模型文件不存在，跳过: {model_path}')
             continue
 
         # 检查是否在错误列表中
         if uid in error_list:
+            skipped_errors += 1
             print(f'跳过错误模型: {uid}')
             continue
 
-        print(f'渲染模型 [{i+1}/{min(args.group_end, len(index_uid_list))}]: {uid}')
+        print(f'渲染模型 [{i+1}/{total_count}]: {uid}')
 
         try:
             render_preview(args, model_path, uid)
+            rendered_count += 1
         except Exception as e:
+            failed_count += 1
             print(f'渲染失败 {uid}: {e}', file=sys.stderr)
             error_list.append(uid)
             continue
 
-        print(f'渲染进度: {i+1} / {min(args.group_end, len(index_uid_list))}')
+        if (rendered_count + failed_count) % 10 == 0:
+            print(f'渲染进度: {rendered_count + failed_count} / {total_count} (成功: {rendered_count}, 失败: {failed_count})')
+
+    # 打印最终统计信息
+    print("\n" + "="*60)
+    print("渲染完成统计:")
+    print(f"  总计: {total_count}")
+    print(f"  已渲染: {rendered_count}")
+    print(f"  失败: {failed_count}")
+    print(f"  跳过（已存在）: {skipped_existing}")
+    print(f"  跳过（模型不存在）: {skipped_missing}")
+    print(f"  跳过（错误列表）: {skipped_errors}")
+    print("="*60)
 
