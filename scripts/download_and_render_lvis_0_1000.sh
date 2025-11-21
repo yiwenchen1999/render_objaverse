@@ -9,33 +9,33 @@
 #SBATCH --output=myjob.download_render_lvis_0_1000.out
 #SBATCH --error=myjob.download_render_lvis_0_1000.err
 
-# 设置工作目录（根据实际路径调整）
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-cd "$PROJECT_DIR"
+# # 设置工作目录（根据实际路径调整）
+# SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+# cd "$PROJECT_DIR"
 
-echo "工作目录: $(pwd)"
-echo ""
+# echo "工作目录: $(pwd)"
+# echo ""
 
-# 步骤 1: 下载模型 (索引 0-9000)
-echo "=========================================="
-echo "步骤 1: 开始下载模型 (索引 0-9000)"
-echo "=========================================="
-echo "时间: $(date)"
-python download_lvis.py \
-    --csv_path ./filtered_uids_lvis.csv \
-    --base_path /projects/vig/Datasets \
-    --begin_uid 0 \
-    --end_uid 9000
+# # 步骤 1: 下载模型 (索引 0-9000)
+# echo "=========================================="
+# echo "步骤 1: 开始下载模型 (索引 0-9000)"
+# echo "=========================================="
+# echo "时间: $(date)"
+# python download_lvis.py \
+#     --csv_path ./filtered_uids_lvis.csv \
+#     --base_path /projects/vig/Datasets \
+#     --begin_uid 0 \
+#     --end_uid 9000
 
-DOWNLOAD_EXIT_CODE=$?
-if [ $DOWNLOAD_EXIT_CODE -ne 0 ]; then
-    echo "错误: 下载模型失败 (退出码: $DOWNLOAD_EXIT_CODE)，停止执行"
-    exit 1
-fi
+# DOWNLOAD_EXIT_CODE=$?
+# if [ $DOWNLOAD_EXIT_CODE -ne 0 ]; then
+#     echo "错误: 下载模型失败 (退出码: $DOWNLOAD_EXIT_CODE)，停止执行"
+#     exit 1
+# fi
 
-echo "下载完成！时间: $(date)"
-echo ""
+# echo "下载完成！时间: $(date)"
+# echo ""
 
 # 步骤 2: 渲染预览图 (索引 0-1000)
 echo "=========================================="

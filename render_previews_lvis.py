@@ -60,10 +60,14 @@ def render_preview(args: Options, model_path: str, uid: str):
         bpy.ops.render.render(write_still=True)
         bpy.context.view_layer.update()
 
-        # 读取并处理图像（修复边缘锯齿）
+        # 读取并处理图像（白色背景）
         img = imageio.v3.imread(output_path) / 255.
         if img.shape[-1] == 4:
-            img = img[..., :3] * img[..., 3:]
+            rgb = img[..., :3]
+            alpha = img[..., 3:4]
+            # 将透明区域替换为白色背景
+            img = rgb * alpha + (1 - alpha) * 1.0  # 白色背景
+            img = img[..., :3]  # 移除 alpha 通道
         imageio.v3.imwrite(output_path, (img * 255).clip(0, 255).astype(np.uint8))
 
     def configure_blender():
