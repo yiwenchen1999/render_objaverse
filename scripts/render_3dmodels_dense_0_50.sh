@@ -10,4 +10,4 @@
 #SBATCH --error=myjob.render_objaverse_0_50.err
 
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 0 --end_uid 50
-python render_3dmodels_dense.py --group_start 0 --group_end 50
+python render_3dmodels_dense.py --group_start 500 --group_end 550
