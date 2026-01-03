@@ -23,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "--end_uid", 
     type=int, 
-    default=1000, 
+    default=2000, 
     help="Number of processes to use for downloading objects"
 )
 parser.add_argument(
@@ -72,7 +72,7 @@ if args.obj_list.endswith('.json'):
 
 elif args.obj_list.endswith('.csv'):
     import csv
-    csv_path = "filtered_uids.csv"
+    csv_path = "test_obj.csv"
     index_uid_list = []
     with open(csv_path, newline='') as csvfile:
         reader = csv.reader(csvfile)
