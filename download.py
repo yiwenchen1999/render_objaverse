@@ -72,7 +72,7 @@ if args.obj_list.endswith('.json'):
 
 elif args.obj_list.endswith('.csv'):
     import csv
-    csv_path = "test_obj.csv"
+    csv_path = "test_obj_test_split.csv"
     index_uid_list = []
     with open(csv_path, newline='') as csvfile:
         reader = csv.reader(csvfile)

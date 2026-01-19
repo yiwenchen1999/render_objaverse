@@ -8,4 +8,4 @@
 #SBATCH --output=myjob.download_objaverse.out
 #SBATCH --error=myjob.download_objaverse.err
 
-python download.py
+python download.py --obj_list test_obj_test_split.csv
