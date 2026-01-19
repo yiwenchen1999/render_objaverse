@@ -21,6 +21,7 @@ class Options:
     white_env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # Path to white env map directory
     output_dir: str = './output'  # Output directory
     num_views: int = 200  # Number of views
+    num_test_views: int = 100  # Number of test views (trajectory views)
     num_white_pls: int = 0  # Number of white point lighting
     num_rgb_pls: int = 0  # Number of RGB point lighting
     num_multi_pls: int = 0  # Number of multi point lighting
@@ -33,6 +34,8 @@ class Options:
     group_start: int = 0
     group_end: int = 10  # Group of models to render
     save_intrinsics: bool = True  # Whether to save intrinsics for each view
+    csv_path: str = "test_obj.csv"  # Path to CSV file containing model indices and UIDs
+    rendered_dir_name: str = "rendered_dense"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
 
 
 def render_core(args: Options, groups_id = 0):
@@ -123,7 +126,7 @@ def render_core(args: Options, groups_id = 0):
     )
     eyes_traj = gen_pt_traj_around_origin(
         seed=seed_view,
-        N=100,
+        N=args.num_test_views,
         min_dist_to_origin=1.0,
         max_dist_to_origin=1.0,
         theta_in_degree=60,
@@ -555,9 +558,8 @@ if __name__ == '__main__':
     args: Options = simple_parsing.parse(Options)
     print(Options)
     import csv
-    csv_path = "test_obj.csv"
     index_uid_list = []
-    with open(csv_path, newline='') as csvfile:
+    with open(args.csv_path, newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if len(row) == 2:
@@ -573,9 +575,9 @@ if __name__ == '__main__':
         model_path = os.path.join(dataset_path, index, f'{uid}.glb')
         # model_path = os.path.join(dataset_path,'000-000', f'000074a334c541878360457c672b6c2e.glb')
         args.three_d_model_path = model_path
-        if not os.path.exists(dataset_path.replace('glbs','rendered_dense')):
-            os.makedirs(dataset_path.replace('glbs','rendered_dense'))
-        args.output_dir = os.path.join(dataset_path.replace('glbs','rendered_dense'))
+        if not os.path.exists(dataset_path.replace('glbs', args.rendered_dir_name)):
+            os.makedirs(dataset_path.replace('glbs', args.rendered_dir_name))
+        args.output_dir = os.path.join(dataset_path.replace('glbs', args.rendered_dir_name))
         # Set the seed for reproducibility
         if args.seed is not None:
             random.seed(args.seed)
