@@ -12,4 +12,4 @@
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 0 --end_uid 50
 python render_3dmodels_dense.py --group_start 0 --group_end 8 \
 --rendered_dir_name rendered_test_split --csv_path test_obj_test_split.csv \
---num_views 30 --num_env_lights 3 --num_test_views 50
+--num_views 30 --num_env_lights 3 --num_test_views 50 
