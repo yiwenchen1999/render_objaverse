@@ -11,7 +11,7 @@
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 800 --end_uid 850
 python render_3dmodels_dense.py --group_start 1800 --group_end 1850 \
 --num_views 30 --num_env_lights 3 --num_test_views 50 \
---num_white_pls 2 --num_rgb_pls 2 --num_multi_pls 2 \
---num_area_lights 3 --rendered_dir_name rendered_dense_lightPlus
+--num_white_pls 0 --num_rgb_pls 0 --num_multi_pls 0 \
+--num_area_lights 0 --rendered_dir_name rendered_dense_lightPlus
 
 
