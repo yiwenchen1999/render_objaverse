@@ -10,7 +10,7 @@
 #SBATCH --error=myjob.render_objaverse_100_150.err
 
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 100 --end_uid 150
-python render_3dmodels_dense.py --group_start 1100 --group_end 1150 \
+python render_3dmodels_dense.py --group_start 2100 --group_end 2150 \
 --num_views 30 --num_env_lights 3 --num_test_views 50 \
 --num_white_pls 0 --num_rgb_pls 0 --num_multi_pls 0 \
 --num_area_lights 0 --rendered_dir_name rendered_dense_lightPlus
