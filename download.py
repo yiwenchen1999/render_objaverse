@@ -86,7 +86,7 @@ elif args.obj_list.endswith('.csv'):
     download_uids = [uid for index, uid in index_uid_list[args.begin_uid:args.end_uid]]
 objects = objaverse.load_objects(
     uids=download_uids,
-    download_processes=2,
+    download_processes=16,
 )
 print('successfully loaded objects')
 print(objects)
