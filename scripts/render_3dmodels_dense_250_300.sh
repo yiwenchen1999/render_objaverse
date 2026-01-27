@@ -6,8 +6,8 @@
 #SBATCH --mem=32
 #SBATCH --ntasks=8
 #SBATCH --gres=gpu:a5000:1
-#SBATCH --output=myjob.render_objaverse_250_300.out
-#SBATCH --error=myjob.render_objaverse_250_300.err
+#SBATCH --output=myjob.render_objaverse_2250_2300.out
+#SBATCH --error=myjob.render_objaverse_2250_2300.err
 
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 250 --end_uid 300
 python render_3dmodels_dense.py --group_start 2250 --group_end 2300 \
