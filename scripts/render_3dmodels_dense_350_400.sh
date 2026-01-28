@@ -2,15 +2,15 @@
 #SBATCH --partition=jiang
 #SBATCH --nodes=1
 #SBATCH --time=24:00:00
-#SBATCH --job-name=render_objaverse_350_400
+#SBATCH --job-name=render_objaverse_2850_2900
 #SBATCH --mem=32
 #SBATCH --ntasks=8
 #SBATCH --gres=gpu:a5000:1
-#SBATCH --output=myjob.render_objaverse_2350_2400.out
-#SBATCH --error=myjob.render_objaverse_2350_2400.err
+#SBATCH --output=myjob.render_objaverse_2850_2900.out
+#SBATCH --error=myjob.render_objaverse_2850_2900.err
 
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 350 --end_uid 400
-python render_3dmodels_dense.py --group_start 2350 --group_end 2400 \
+python render_3dmodels_dense.py --group_start 2850 --group_end 2900 \
 --num_views 30 --num_env_lights 3 --num_test_views 50 \
 --num_white_pls 0 --num_rgb_pls 0 --num_multi_pls 0 \
 --num_area_lights 0 --rendered_dir_name rendered_dense_lightPlus
