@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-从 filtered_uids.csv 中随机选择 2000 个项目添加到 test_obj.csv
+从 filtered_uids.csv 中随机选择 5000 个项目添加到 test_obj.csv
 确保不与 test_obj.csv 中已有的项目重叠
 """
 import csv
@@ -41,7 +41,7 @@ def save_csv_entries(csv_path: str, entries: List[Tuple[str, str]], append: bool
 def main():
     test_obj_path = 'test_obj.csv'
     filtered_uids_path = 'filtered_uids.csv'
-    num_to_select = 2000
+    num_to_select = 5000
     
     print("=" * 60)
     print("从 filtered_uids.csv 随机选择项目添加到 test_obj.csv")
