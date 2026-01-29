@@ -1,0 +1,9 @@
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --time=8:00:00
+#SBATCH --job-name=render_objaverse_3150-3200
+#SBATCH --mem=32
+#SBATCH --ntasks=8
+#SBATCH --gres=gpu:1
+#SBATCH --output=myjob.render_objaverse_3150-3200.out
+#SBATCH --error=myjob.render_objaverse_3150-3200.err
