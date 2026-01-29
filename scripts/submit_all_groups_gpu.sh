@@ -35,5 +35,11 @@ sbatch scripts/render_3dmodels_dense_400_450.sh
 echo "提交组 450-500..."
 sbatch scripts/render_3dmodels_dense_450_500.sh
 
+echo "提交组 900-950..."
+sbatch scripts/render_3dmodels_dense_900-950.sh
+
+echo "提交组 950-1000..."
+sbatch scripts/render_3dmodels_dense_950-1000.sh
+
 echo "所有作业已提交完成!"
 echo "使用 'squeue -u \$USER' 查看作业状态"
