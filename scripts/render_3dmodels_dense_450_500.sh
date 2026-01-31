@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=jiang
 #SBATCH --nodes=1
-#SBATCH --time=24:00:00
+#SBATCH --time=60:00:00
 #SBATCH --job-name=render_objaverse_3950_4000
 #SBATCH --mem=32
 #SBATCH --ntasks=8
