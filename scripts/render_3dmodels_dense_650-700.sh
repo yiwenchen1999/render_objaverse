@@ -2,16 +2,16 @@
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --time=8:00:00
-#SBATCH --job-name=render_objaverse_8550-8600
+#SBATCH --job-name=render_objaverse_addLights_6650_6700
 #SBATCH --mem=32
 #SBATCH --ntasks=8
 #SBATCH --gres=gpu:1
-#SBATCH --output=myjob.render_objaverse_8550-8600.out
-#SBATCH --error=myjob.render_objaverse_8550-8600.err
+#SBATCH --output=myjob.render_objaverse_addLights_6650_6700.out
+#SBATCH --error=myjob.render_objaverse_addLights_6650_6700.err
 
 # python ../download.py --base_path /projects/vig/Datasets --begin_uid 650 --end_uid 700
-python render_3dmodels_dense.py --group_start 8550 --group_end 8600 \
---num_views 30 --num_env_lights 3 --num_test_views 50 \
---num_white_pls 0 --num_rgb_pls 0 --num_multi_pls 0 \
+python render_3dmodels_dense_addLights.py --group_start 6650 --group_end 6700 \
+--num_views 30 --num_env_lights 0 --num_white_envs 0 --num_test_views 50 \
+--num_white_pls 3 --num_rgb_pls 1 --num_multi_pls 0 \
 --num_area_lights 0 --rendered_dir_name rendered_dense_lightPlus
 
