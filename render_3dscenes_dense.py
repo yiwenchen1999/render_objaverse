@@ -53,7 +53,7 @@ def render_core(args: Options, groups_id = 0):
     from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
 
-    def add_textured_cylinder(texture_dir):
+    def add_textured_cylinder(texture_dir, model_objects=None):
         # Calculate scene bounds (of the existing object)
         # We assume the object is centered at (0,0,0) and scaled to fit in unit sphere (radius 0.5)
         # So we can just generate random parameters.
@@ -65,24 +65,13 @@ def render_core(args: Options, groups_id = 0):
         cylinder = bpy.context.active_object
         cylinder.name = "CylinderPrimitive"
         
-        # Position - CENTERED for testing
-        cylinder.location = (0, 0, 0)
-        # min_dist = 0.6 + radius
-        # max_dist = 2.0
+        # Position - Randomly placed but avoiding collision with model_objects
+        from mathutils.bvhtree import BVHTree
         
-        # pos_found = False
-        # for _ in range(100):
-        #     pos = [random.uniform(-max_dist, max_dist) for _ in range(3)]
-        #     dist = math.sqrt(sum(x*x for x in pos))
-        #     if min_dist < dist < max_dist:
-        #         cylinder.location = pos
-        #         pos_found = True
-        #         break
+        # If model_objects are provided, we try to place the cylinder such that it doesn't collide
+        # But wait, model_objects are not loaded yet when this function was originally called.
+        # We need to change the logic: load model first, then add cylinder.
         
-        # if not pos_found:
-        #     cylinder.location = (1.5, 0, 0)
-
-        # cylinder.rotation_euler = [random.uniform(0, 2*math.pi) for _ in range(3)]
         cylinder.rotation_euler = [0, 0, random.uniform(0, 2*math.pi)]
         
         # Texture
@@ -129,6 +118,27 @@ def render_core(args: Options, groups_id = 0):
             except Exception as e:
                 print(f"Error applying texture: {e}")
 
+    def check_collision(obj1, obj2):
+        """
+        Check if two objects are colliding using BVH Tree.
+        Returns True if they overlap, False otherwise.
+        """
+        # Get dependency graph to ensure we get evaluated mesh (with transforms)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        
+        # Create BVH trees
+        # FromObject automatically handles world matrix transforms
+        try:
+            bvh1 = mathutils.bvhtree.BVHTree.FromObject(obj1, depsgraph)
+            bvh2 = mathutils.bvhtree.BVHTree.FromObject(obj2, depsgraph)
+            
+            # Check overlap
+            overlap_pairs = bvh1.overlap(bvh2)
+            return len(overlap_pairs) > 0
+        except Exception as e:
+            print(f"BVH collision check failed: {e}")
+            return False
+
     def render_rgb_and_hint(output_path,idx = 0):
         # Get the last added object (assuming the new object is the most recently added one)
         # new_object = bpy.context.scene.objects[-1]
@@ -168,22 +178,24 @@ def render_core(args: Options, groups_id = 0):
 
     #& 1.preparing the scene
     #* 1.1 prepare the 3d model
-    # Add cylinder first (for testing)
-    add_textured_cylinder(args.texture_dir)
-    
+    # Load model first so we can check collision
     file_path = args.three_d_model_path
     with stdout_redirected():
         import_3d_model(file_path)
     
     # Rename the imported object(s)
-    # We identify imported objects by excluding the cylinder
-    imported_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive"]
+    # We identify imported objects by checking what's currently in scene (before cylinder)
+    # Actually, easier to just get all objects now, rename them, then add cylinder
+    imported_objects = [obj for obj in bpy.context.scene.objects]
     if imported_objects:
         # Rename the last one to shape, but we will use imported_objects list for scaling
         imported_objects[-1].name = "shape"
         bpy.context.view_layer.objects.active = imported_objects[-1]
         bpy.context.view_layer.update()
 
+    # Add cylinder
+    add_textured_cylinder(args.texture_dir)
+    
     # Scale objects separately to target_scale=0.5
     # First, scale the cylinder
     cylinder = bpy.data.objects.get("CylinderPrimitive")
@@ -197,8 +209,6 @@ def render_core(args: Options, groups_id = 0):
         bbox_max = (-math.inf,) * 3
         for coord in cylinder.bound_box:
             coord = mathutils.Vector(coord)
-            # Use local coordinates for bounding box size calculation relative to object origin
-            # or apply current scale. Since scale is (1,1,1), local bbox is fine.
             bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
             bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
         
@@ -239,19 +249,7 @@ def render_core(args: Options, groups_id = 0):
                     obj.scale = obj.scale * scale_factor
             bpy.context.view_layer.update()
 
-            # Now move shape to a position close to cylinder but not colliding
-            dist = random.uniform(0.6, 0.8)
-            theta = random.uniform(0, 2*math.pi)
-            phi = random.uniform(0, math.pi)
-            
-            x = dist * math.sin(phi) * math.cos(theta)
-            y = dist * math.sin(phi) * math.sin(theta)
-            z = dist * math.cos(phi)
-            
-            offset = mathutils.Vector((x, y, z))
-            print(f"DEBUG: Moving model to offset: {offset}")
-            
-            # First center the model at its own origin
+            # Center the model first
             # Recalculate bbox after scale
             bbox_min = (math.inf,) * 3
             bbox_max = (-math.inf,) * 3
@@ -268,8 +266,57 @@ def render_core(args: Options, groups_id = 0):
             
             for obj in model_objects:
                 if obj.parent is None:
-                    obj.matrix_world.translation += centering_offset + offset
+                    obj.matrix_world.translation += centering_offset
             bpy.context.view_layer.update()
+
+            # Now find a valid position for the model avoiding collision with cylinder
+            valid_pos_found = False
+            original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
+            
+            # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
+            # We try positions in a shell around origin
+            for _ in range(50):
+                dist = random.uniform(0.4, 0.8) # Try slightly closer range first
+                theta = random.uniform(0, 2*math.pi)
+                phi = random.uniform(0, math.pi)
+                
+                x = dist * math.sin(phi) * math.cos(theta)
+                y = dist * math.sin(phi) * math.sin(theta)
+                z = dist * math.cos(phi)
+                
+                offset = mathutils.Vector((x, y, z))
+                
+                # Move model
+                for obj in model_objects:
+                    if obj.parent is None:
+                        # Reset to centered position first (which is original_locations + centering_offset applied earlier)
+                        # Wait, we updated translation in place. So original_locations stores the centered location.
+                        obj.location = original_locations[obj] + offset
+                
+                bpy.context.view_layer.update()
+                
+                # Check collision with cylinder
+                is_colliding = False
+                if cylinder:
+                    for obj in model_objects:
+                        if obj.type == 'MESH':
+                            if check_collision(cylinder, obj):
+                                is_colliding = True
+                                break
+                
+                if not is_colliding:
+                    valid_pos_found = True
+                    print(f"DEBUG: Found valid position at offset {offset}")
+                    break
+            
+            if not valid_pos_found:
+                print("DEBUG: Could not find collision-free position, using last attempt.")
+                # Or fallback to a safer distance
+                fallback_offset = mathutils.Vector((1.0, 0, 0))
+                for obj in model_objects:
+                    if obj.parent is None:
+                        obj.location = original_locations[obj] + fallback_offset
+                bpy.context.view_layer.update()
     
     # Debug: Print all objects final locations
     for obj in bpy.context.scene.objects:
