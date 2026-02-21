@@ -42,6 +42,7 @@ class Options:
 
 def render_core(args: Options, groups_id = 0):
     import bpy
+    import mathutils
     from mathutils import Matrix
 
     from bpy_helper.camera import create_camera, look_at_to_c2w
