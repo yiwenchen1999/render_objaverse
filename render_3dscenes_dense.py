@@ -36,7 +36,7 @@ class Options:
     group_end: int = 10  # Group of models to render
     save_intrinsics: bool = True  # Whether to save intrinsics for each view
     csv_path: str = "test_obj.csv"  # Path to CSV file containing model indices and UIDs
-    rendered_dir_name: str = "rendered_dense"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
+    rendered_dir_name: str = "render_scene_test"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
     texture_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_textures" # Path to texture files
 
 
