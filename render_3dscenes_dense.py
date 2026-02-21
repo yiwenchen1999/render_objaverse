@@ -81,7 +81,8 @@ def render_core(args: Options, groups_id = 0):
         # if not pos_found:
         #     cylinder.location = (1.5, 0, 0)
 
-        cylinder.rotation_euler = [random.uniform(0, 2*math.pi) for _ in range(3)]
+        # cylinder.rotation_euler = [random.uniform(0, 2*math.pi) for _ in range(3)]
+        cylinder.rotation_euler = [0, 0, random.uniform(0, 2*math.pi)]
         
         # Texture
         if os.path.exists(texture_dir):
@@ -150,8 +151,8 @@ def render_core(args: Options, groups_id = 0):
 
     def configure_blender():
         # Set the render resolution
-        bpy.context.scene.render.resolution_x = 512
-        bpy.context.scene.render.resolution_y = 512
+        bpy.context.scene.render.resolution_x = 256
+        bpy.context.scene.render.resolution_y = 256
         bpy.context.scene.render.engine = 'CYCLES'
         bpy.context.preferences.addons["cycles"].preferences.get_devices()
 
@@ -170,8 +171,8 @@ def render_core(args: Options, groups_id = 0):
     add_textured_cylinder(args.texture_dir)
     
     file_path = args.three_d_model_path
-    # with stdout_redirected():
-    #     import_3d_model(file_path)
+    with stdout_redirected():
+        import_3d_model(file_path)
     
     # Rename the imported object(s)
     if bpy.context.scene.objects:
@@ -180,7 +181,114 @@ def render_core(args: Options, groups_id = 0):
         bpy.context.view_layer.objects.active = new_object
         bpy.context.view_layer.update()
 
-    scale, offset = normalize_scene(use_bounding_sphere=True)
+    # Scale objects separately to target_scale=0.5
+    # First, scale the cylinder
+    cylinder = bpy.data.objects.get("CylinderPrimitive")
+    if cylinder:
+        # Reset cylinder scale first just in case
+        cylinder.scale = (1, 1, 1)
+        bpy.context.view_layer.update()
+        
+        # Calculate scale factor for cylinder
+        bbox_min = (math.inf,) * 3
+        bbox_max = (-math.inf,) * 3
+        for coord in cylinder.bound_box:
+            coord = mathutils.Vector(coord)
+            # Use local coordinates for bounding box size calculation relative to object origin
+            # or apply current scale. Since scale is (1,1,1), local bbox is fine.
+            bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+            bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+        
+        max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+        target_scale = 0.5
+        scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+        cylinder.scale = cylinder.scale * scale_factor
+        bpy.context.view_layer.update()
+
+    # Then scale the imported shape
+    shape = bpy.data.objects.get("shape")
+    if shape:
+        # For the imported shape, we might need to consider its hierarchy if it has children,
+        # but here we assume 'shape' is the root or main object we want to scale.
+        # However, import_3d_model might import multiple objects. 
+        # The 'shape' object is just the last one added. 
+        # Let's use scene_bbox for the 'shape' object (and its children if any, though scene_bbox iterates all meshes).
+        # To be safe and consistent with previous logic, let's use the 'normalize_scene' logic but applied only to 'shape'
+        
+        # We need to find all objects belonging to the imported model.
+        # Since we added cylinder first, any object that is NOT the cylinder is part of the model.
+        model_objects = [obj for obj in bpy.context.scene.objects if obj != cylinder]
+        
+        # Compute bbox for these objects
+        bbox_min = (math.inf,) * 3
+        bbox_max = (-math.inf,) * 3
+        found_mesh = False
+        for obj in model_objects:
+            if obj.type == 'MESH':
+                found_mesh = True
+                for coord in obj.bound_box:
+                    coord = mathutils.Vector(coord)
+                    coord = obj.matrix_world @ coord
+                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+        
+        if found_mesh:
+            max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+            target_scale = 0.5
+            scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+            
+            # Apply scale to root objects of the model
+            for obj in model_objects:
+                if obj.parent is None:
+                    obj.scale = obj.scale * scale_factor
+            bpy.context.view_layer.update()
+
+            # Now move shape to a position close to cylinder but not colliding
+            # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
+            # Let's put shape at a random position nearby.
+            # Cylinder radius after scale is roughly (0.1~0.4) * scale_factor. 
+            # If cylinder max dim was ~2, scale_factor is ~0.25. Radius becomes ~0.025-0.1.
+            # Shape is also scaled to 0.5 max dim.
+            
+            # Simple heuristic: place shape at distance 0.6-0.8 from origin
+            dist = random.uniform(0.6, 0.8)
+            theta = random.uniform(0, 2*math.pi)
+            phi = random.uniform(0, math.pi)
+            
+            x = dist * math.sin(phi) * math.cos(theta)
+            y = dist * math.sin(phi) * math.sin(theta)
+            z = dist * math.cos(phi)
+            
+            # Move root objects of the model
+            offset = mathutils.Vector((x, y, z))
+            
+            # First center the model at its own origin
+            # Recalculate bbox after scale
+            bbox_min = (math.inf,) * 3
+            bbox_max = (-math.inf,) * 3
+            for obj in model_objects:
+                if obj.type == 'MESH':
+                    for coord in obj.bound_box:
+                        coord = mathutils.Vector(coord)
+                        coord = obj.matrix_world @ coord
+                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                        bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+            
+            current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
+            centering_offset = -current_center
+            
+            for obj in model_objects:
+                if obj.parent is None:
+                    obj.matrix_world.translation += centering_offset + offset
+            bpy.context.view_layer.update()
+
+    # scale, offset = normalize_scene(use_bounding_sphere=True)
+    # Instead of normalizing the whole scene (which would rescale everything again),
+    # we just calculate the overall scene scale/offset for saving metadata, if needed.
+    # But since we manually placed them, we can just set dummy values or calculate actuals.
+    scale = 1.0
+    offset = [0.0, 0.0, 0.0]
+    
     clear_emission_and_alpha_nodes()
 
     # Configure blender
