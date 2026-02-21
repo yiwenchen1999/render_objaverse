@@ -66,6 +66,9 @@ output/
 *.exr
 *.hdr
 
+# 资源样本
+asset_samples/
+
 # 临时文件
 *.tmp
 *.temp
