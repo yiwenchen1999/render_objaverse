@@ -4,3 +4,14 @@ conda activate /projects/vig/yiwenc/all_env/blender-env
 find -maxdepth 1 -type d | sort | while read -r dir; do n=$(find "$dir" -type f | wc -l); printf "%4d : %s\n" $n "$dir"; done
 
 python3 scripts/sample_test_obj.py
+
+cd /Users/yiwenchen/Desktop/ResearchProjects/scripts
+source venv/bin/activate
+
+python render_3d_scenes_dense.py \
+    --group_start 0 \
+    --group_end 10 \
+    --num_objects_per_scene 3 \
+    --num_white_envs 1 \
+    --num_env_lights 5 \
+    --output_dir ./output_scenes
