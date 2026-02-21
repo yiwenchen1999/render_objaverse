@@ -276,7 +276,7 @@ def render_core(args: Options, groups_id = 0):
             # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
             # We try positions in a shell around origin
             for _ in range(50):
-                dist = random.uniform(0.4, 0.8) # Try slightly closer range first
+                dist = random.uniform(0.1, 0.8) # Try slightly closer range first
                 theta = random.uniform(0, 2*math.pi)
                 phi = random.uniform(0, math.pi)
                 
