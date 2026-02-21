@@ -176,10 +176,12 @@ def render_core(args: Options, groups_id = 0):
         import_3d_model(file_path)
     
     # Rename the imported object(s)
-    if bpy.context.scene.objects:
-        new_object = bpy.context.scene.objects[-1]
-        new_object.name = "shape"
-        bpy.context.view_layer.objects.active = new_object
+    # We identify imported objects by excluding the cylinder
+    imported_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive"]
+    if imported_objects:
+        # Rename the last one to shape, but we will use imported_objects list for scaling
+        imported_objects[-1].name = "shape"
+        bpy.context.view_layer.objects.active = imported_objects[-1]
         bpy.context.view_layer.update()
 
     # Scale objects separately to target_scale=0.5
@@ -205,21 +207,13 @@ def render_core(args: Options, groups_id = 0):
         scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
         cylinder.scale = cylinder.scale * scale_factor
         bpy.context.view_layer.update()
+        print(f"DEBUG: Cylinder scaled. Factor: {scale_factor}, New Scale: {cylinder.scale}")
 
     # Then scale the imported shape
-    shape = bpy.data.objects.get("shape")
-    if shape:
-        # For the imported shape, we might need to consider its hierarchy if it has children,
-        # but here we assume 'shape' is the root or main object we want to scale.
-        # However, import_3d_model might import multiple objects. 
-        # The 'shape' object is just the last one added. 
-        # Let's use scene_bbox for the 'shape' object (and its children if any, though scene_bbox iterates all meshes).
-        # To be safe and consistent with previous logic, let's use the 'normalize_scene' logic but applied only to 'shape'
-        
-        # We need to find all objects belonging to the imported model.
-        # Since we added cylinder first, any object that is NOT the cylinder is part of the model.
-        model_objects = [obj for obj in bpy.context.scene.objects if obj != cylinder]
-        
+    # Use the list we captured earlier
+    model_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive"]
+    
+    if model_objects:
         # Compute bbox for these objects
         bbox_min = (math.inf,) * 3
         bbox_max = (-math.inf,) * 3
@@ -237,6 +231,7 @@ def render_core(args: Options, groups_id = 0):
             max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
             target_scale = 0.5
             scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+            print(f"DEBUG: Model max dim: {max_dim}, Scale factor: {scale_factor}")
             
             # Apply scale to root objects of the model
             for obj in model_objects:
@@ -245,13 +240,6 @@ def render_core(args: Options, groups_id = 0):
             bpy.context.view_layer.update()
 
             # Now move shape to a position close to cylinder but not colliding
-            # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
-            # Let's put shape at a random position nearby.
-            # Cylinder radius after scale is roughly (0.1~0.4) * scale_factor. 
-            # If cylinder max dim was ~2, scale_factor is ~0.25. Radius becomes ~0.025-0.1.
-            # Shape is also scaled to 0.5 max dim.
-            
-            # Simple heuristic: place shape at distance 0.6-0.8 from origin
             dist = random.uniform(0.6, 0.8)
             theta = random.uniform(0, 2*math.pi)
             phi = random.uniform(0, math.pi)
@@ -260,8 +248,8 @@ def render_core(args: Options, groups_id = 0):
             y = dist * math.sin(phi) * math.sin(theta)
             z = dist * math.cos(phi)
             
-            # Move root objects of the model
             offset = mathutils.Vector((x, y, z))
+            print(f"DEBUG: Moving model to offset: {offset}")
             
             # First center the model at its own origin
             # Recalculate bbox after scale
@@ -282,6 +270,10 @@ def render_core(args: Options, groups_id = 0):
                 if obj.parent is None:
                     obj.matrix_world.translation += centering_offset + offset
             bpy.context.view_layer.update()
+    
+    # Debug: Print all objects final locations
+    for obj in bpy.context.scene.objects:
+        print(f"DEBUG: Object: {obj.name}, Location: {obj.location}, Scale: {obj.scale}")
 
     # scale, offset = normalize_scene(use_bounding_sphere=True)
     # Instead of normalizing the whole scene (which would rescale everything again),
