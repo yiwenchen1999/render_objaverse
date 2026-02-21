@@ -64,21 +64,22 @@ def render_core(args: Options, groups_id = 0):
         cylinder = bpy.context.active_object
         cylinder.name = "CylinderPrimitive"
         
-        # Position
-        min_dist = 0.6 + radius
-        max_dist = 2.0
+        # Position - CENTERED for testing
+        cylinder.location = (0, 0, 0)
+        # min_dist = 0.6 + radius
+        # max_dist = 2.0
         
-        pos_found = False
-        for _ in range(100):
-            pos = [random.uniform(-max_dist, max_dist) for _ in range(3)]
-            dist = math.sqrt(sum(x*x for x in pos))
-            if min_dist < dist < max_dist:
-                cylinder.location = pos
-                pos_found = True
-                break
+        # pos_found = False
+        # for _ in range(100):
+        #     pos = [random.uniform(-max_dist, max_dist) for _ in range(3)]
+        #     dist = math.sqrt(sum(x*x for x in pos))
+        #     if min_dist < dist < max_dist:
+        #         cylinder.location = pos
+        #         pos_found = True
+        #         break
         
-        if not pos_found:
-            cylinder.location = (1.5, 0, 0)
+        # if not pos_found:
+        #     cylinder.location = (1.5, 0, 0)
 
         cylinder.rotation_euler = [random.uniform(0, 2*math.pi) for _ in range(3)]
         
@@ -165,9 +166,12 @@ def render_core(args: Options, groups_id = 0):
 
     #& 1.preparing the scene
     #* 1.1 prepare the 3d model
+    # Add cylinder first (for testing)
+    add_textured_cylinder(args.texture_dir)
+    
     file_path = args.three_d_model_path
-    with stdout_redirected():
-        import_3d_model(file_path)
+    # with stdout_redirected():
+    #     import_3d_model(file_path)
     
     # Rename the imported object(s)
     if bpy.context.scene.objects:
@@ -178,9 +182,6 @@ def render_core(args: Options, groups_id = 0):
 
     scale, offset = normalize_scene(use_bounding_sphere=True)
     clear_emission_and_alpha_nodes()
-    
-    # Add cylinder
-    add_textured_cylinder(args.texture_dir)
 
     # Configure blender
     configure_blender()
