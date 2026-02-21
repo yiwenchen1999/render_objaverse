@@ -13,7 +13,7 @@ srun --partition=gpu --nodes=1 --pty --gres=gpu:1 --ntasks=8 --mem=32 --time=8:0
 python render_3d_scenes_dense.py \
     --group_start 0 \
     --group_end 10 \
-    --num_objects_per_scene 3 \
     --num_white_envs 1 \
     --num_env_lights 5 \
+    --texture_dir /projects/vig/Datasets/Polyhaven/polyhaven_textures \
     --output_dir ./output_scenes
