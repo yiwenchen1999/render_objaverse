@@ -8,6 +8,8 @@ python3 scripts/sample_test_obj.py
 cd /Users/yiwenchen/Desktop/ResearchProjects/scripts
 source venv/bin/activate
 
+srun --partition=gpu --nodes=1 --pty --gres=gpu:1 --ntasks=8 --mem=32 --time=8:00:00 /bin/bash
+
 python render_3d_scenes_dense.py \
     --group_start 0 \
     --group_end 10 \
