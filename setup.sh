@@ -11,8 +11,8 @@ source venv/bin/activate
 srun --partition=gpu --nodes=1 --pty --gres=gpu:1 --ntasks=8 --mem=32 --time=8:00:00 /bin/bash
 
 python render_3dscenes_dense.py \
-    --group_start 5 \
-    --group_end 6 \
+    --group_start 6 \
+    --group_end 7 \
     --num_white_envs 1 \
     --num_env_lights 0 \
     --model_lq_dir /projects/vig/Datasets/Polyhaven/polyhaven_models \

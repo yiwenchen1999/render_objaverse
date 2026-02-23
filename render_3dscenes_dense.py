@@ -268,11 +268,19 @@ def render_core(args: Options, groups_id = 0):
             valid_pos_found = False
             original_locations = {obj: obj.location.copy() for obj in lq_objects if obj.parent is None}
             
-            for _ in range(50):
-                dist = random.uniform(0.1, 0.8)
-                theta = random.uniform(0, 2*math.pi)
-                x = dist * math.cos(theta)
-                y = dist * math.sin(theta)
+            # Sample along a spiral to favor center but explore outwards
+            spiral_theta_offset = random.uniform(0, 2*math.pi)
+            spiral_loops = 3
+            max_dist = 1.5
+            min_dist = 0.2
+            
+            for i in range(50):
+                t = i / 50.0
+                r = min_dist + t * (max_dist - min_dist)
+                theta = spiral_theta_offset + t * spiral_loops * 2 * math.pi
+                
+                x = r * math.cos(theta)
+                y = r * math.sin(theta)
                 z = 0
                 offset = mathutils.Vector((x, y, z))
                 
@@ -498,14 +506,19 @@ def render_core(args: Options, groups_id = 0):
             original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
             
             # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
-            # We try positions in a shell around origin
-            for _ in range(50):
-                dist = random.uniform(0.1, 0.8) # Try slightly closer range first
-                theta = random.uniform(0, 2*math.pi)
-                # phi = random.uniform(0, math.pi) # Don't vary phi, keep on ground
+            # Sample along a spiral to favor center but explore outwards
+            spiral_theta_offset = random.uniform(0, 2*math.pi)
+            spiral_loops = 3
+            max_dist = 1.5
+            min_dist = 0.2
+            
+            for i in range(50):
+                t = i / 50.0
+                r = min_dist + t * (max_dist - min_dist)
+                theta = spiral_theta_offset + t * spiral_loops * 2 * math.pi
                 
-                x = dist * math.cos(theta)
-                y = dist * math.sin(theta)
+                x = r * math.cos(theta)
+                y = r * math.sin(theta)
                 z = 0 # Keep z offset 0 relative to ground-touching position
                 
                 offset = mathutils.Vector((x, y, z))
