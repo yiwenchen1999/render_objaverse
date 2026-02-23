@@ -372,7 +372,7 @@ def render_core(args: Options, groups_id = 0):
     add_textured_plane(args.texture_dir)
     
     # Load model first so we can check collision
-    # file_path = args.three_d_model_path
+    file_path = args.three_d_model_path
     # with stdout_redirected():
     #     import_3d_model(file_path)
     
