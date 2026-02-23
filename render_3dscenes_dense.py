@@ -178,7 +178,8 @@ def render_core(args: Options, groups_id = 0):
             print(f"LQ Model dir {model_dir} does not exist.")
             return
 
-        files = glob.glob(os.path.join(model_dir, "*.blend"))
+        # Recursively find .blend files
+        files = glob.glob(os.path.join(model_dir, "**", "*.blend"), recursive=True)
         if not files:
             print(f"No .blend files found in {model_dir}")
             return
