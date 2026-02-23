@@ -267,34 +267,43 @@ def render_core(args: Options, groups_id = 0):
             valid_pos_found = False
             original_locations = {obj: obj.location.copy() for obj in lq_objects if obj.parent is None}
             
-            for _ in range(50):
-                dist = random.uniform(0.1, 0.8)
-                theta = random.uniform(0, 2*math.pi)
-                x = dist * math.cos(theta)
-                y = dist * math.sin(theta)
-                z = 0
-                offset = mathutils.Vector((x, y, z))
+            # For testing, place at center
+            offset = mathutils.Vector((0, 0, 0))
+            for obj in lq_objects:
+                if obj.parent is None:
+                    obj.location = original_locations[obj] + offset
+            bpy.context.view_layer.update()
+            valid_pos_found = True
+            print(f"DEBUG: Placed LQ model at center")
+            
+            # for _ in range(50):
+            #     dist = random.uniform(0.1, 0.8)
+            #     theta = random.uniform(0, 2*math.pi)
+            #     x = dist * math.cos(theta)
+            #     y = dist * math.sin(theta)
+            #     z = 0
+            #     offset = mathutils.Vector((x, y, z))
                 
-                for obj in lq_objects:
-                    if obj.parent is None:
-                        obj.location = original_locations[obj] + offset
-                bpy.context.view_layer.update()
+            #     for obj in lq_objects:
+            #         if obj.parent is None:
+            #             obj.location = original_locations[obj] + offset
+            #     bpy.context.view_layer.update()
                 
-                is_colliding = False
-                for other_obj in existing_objects:
-                    if other_obj.type == 'MESH':
-                         for lq_obj in lq_objects:
-                             if lq_obj.type == 'MESH':
-                                 if check_collision(lq_obj, other_obj):
-                                     is_colliding = True
-                                     break
-                    if is_colliding:
-                        break
+            #     is_colliding = False
+            #     for other_obj in existing_objects:
+            #         if other_obj.type == 'MESH':
+            #              for lq_obj in lq_objects:
+            #                  if lq_obj.type == 'MESH':
+            #                      if check_collision(lq_obj, other_obj):
+            #                          is_colliding = True
+            #                          break
+            #         if is_colliding:
+            #             break
                 
-                if not is_colliding:
-                    valid_pos_found = True
-                    print(f"DEBUG: Found valid position for LQ model at offset {offset}")
-                    break
+            #     if not is_colliding:
+            #         valid_pos_found = True
+            #         print(f"DEBUG: Found valid position for LQ model at offset {offset}")
+            #         break
             
             if not valid_pos_found:
                  print("DEBUG: Could not find collision-free position for LQ model.")
@@ -363,183 +372,183 @@ def render_core(args: Options, groups_id = 0):
     add_textured_plane(args.texture_dir)
     
     # Load model first so we can check collision
-    file_path = args.three_d_model_path
-    with stdout_redirected():
-        import_3d_model(file_path)
+    # file_path = args.three_d_model_path
+    # with stdout_redirected():
+    #     import_3d_model(file_path)
     
     # Rename the imported object(s)
     # We identify imported objects by checking what's currently in scene (before cylinder)
     # Actually, easier to just get all objects now, rename them, then add cylinder
-    imported_objects = [obj for obj in bpy.context.scene.objects if obj.name != "GroundPlane"]
-    if imported_objects:
-        # Rename the last one to shape, but we will use imported_objects list for scaling
-        imported_objects[-1].name = "shape"
-        bpy.context.view_layer.objects.active = imported_objects[-1]
-        bpy.context.view_layer.update()
+    # imported_objects = [obj for obj in bpy.context.scene.objects if obj.name != "GroundPlane"]
+    # if imported_objects:
+    #     # Rename the last one to shape, but we will use imported_objects list for scaling
+    #     imported_objects[-1].name = "shape"
+    #     bpy.context.view_layer.objects.active = imported_objects[-1]
+    #     bpy.context.view_layer.update()
 
     # Add cylinder
-    add_textured_cylinder(args.texture_dir)
+    # add_textured_cylinder(args.texture_dir)
     
     # Scale objects separately to target_scale=0.5
     # First, scale the cylinder
-    cylinder = bpy.data.objects.get("CylinderPrimitive")
-    if cylinder:
-        # Reset cylinder scale first just in case
-        cylinder.scale = (1, 1, 1)
-        bpy.context.view_layer.update()
+    cylinder = None # bpy.data.objects.get("CylinderPrimitive")
+    # if cylinder:
+    #     # Reset cylinder scale first just in case
+    #     cylinder.scale = (1, 1, 1)
+    #     bpy.context.view_layer.update()
         
-        # Calculate scale factor for cylinder
-        bbox_min = (math.inf,) * 3
-        bbox_max = (-math.inf,) * 3
-        for coord in cylinder.bound_box:
-            coord = mathutils.Vector(coord)
-            bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-            bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+    #     # Calculate scale factor for cylinder
+    #     bbox_min = (math.inf,) * 3
+    #     bbox_max = (-math.inf,) * 3
+    #     for coord in cylinder.bound_box:
+    #         coord = mathutils.Vector(coord)
+    #         bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+    #         bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
         
-        max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
-        target_scale = 0.5
-        scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
-        cylinder.scale = cylinder.scale * scale_factor
+    #     max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+    #     target_scale = 0.5
+    #     scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+    #     cylinder.scale = cylinder.scale * scale_factor
         
-        # Move cylinder to touch ground
-        # Ground is at z=0 (plane local z=0). Cylinder local origin is center.
-        # Height is depth.
-        # Wait, cylinder primitive origin is at center.
-        # We need to move it up by half height * scale_z
-        # Actually, let's just use bbox min z
-        bpy.context.view_layer.update()
+    #     # Move cylinder to touch ground
+    #     # Ground is at z=0 (plane local z=0). Cylinder local origin is center.
+    #     # Height is depth.
+    #     # Wait, cylinder primitive origin is at center.
+    #     # We need to move it up by half height * scale_z
+    #     # Actually, let's just use bbox min z
+    #     bpy.context.view_layer.update()
         
-        bbox_min = (math.inf,) * 3
-        for coord in cylinder.bound_box:
-            coord = mathutils.Vector(coord)
-            coord = cylinder.matrix_world @ coord
-            bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+    #     bbox_min = (math.inf,) * 3
+    #     for coord in cylinder.bound_box:
+    #         coord = mathutils.Vector(coord)
+    #         coord = cylinder.matrix_world @ coord
+    #         bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
         
-        # Move up so min z is 0
-        cylinder.location.z -= bbox_min[2]
+    #     # Move up so min z is 0
+    #     cylinder.location.z -= bbox_min[2]
         
-        bpy.context.view_layer.update()
-        print(f"DEBUG: Cylinder scaled. Factor: {scale_factor}, New Scale: {cylinder.scale}")
+    #     bpy.context.view_layer.update()
+    #     print(f"DEBUG: Cylinder scaled. Factor: {scale_factor}, New Scale: {cylinder.scale}")
 
     # Then scale the imported shape
     # Use the list we captured earlier
-    model_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive" and obj.name != "GroundPlane"]
+    model_objects = [] # [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive" and obj.name != "GroundPlane"]
     
-    if model_objects:
-        # Compute bbox for these objects
-        bbox_min = (math.inf,) * 3
-        bbox_max = (-math.inf,) * 3
-        found_mesh = False
-        for obj in model_objects:
-            if obj.type == 'MESH':
-                found_mesh = True
-                for coord in obj.bound_box:
-                    coord = mathutils.Vector(coord)
-                    coord = obj.matrix_world @ coord
-                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+    # if model_objects:
+    #     # Compute bbox for these objects
+    #     bbox_min = (math.inf,) * 3
+    #     bbox_max = (-math.inf,) * 3
+    #     found_mesh = False
+    #     for obj in model_objects:
+    #         if obj.type == 'MESH':
+    #             found_mesh = True
+    #             for coord in obj.bound_box:
+    #                 coord = mathutils.Vector(coord)
+    #                 coord = obj.matrix_world @ coord
+    #                 bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+    #                 bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
         
-        if found_mesh:
-            max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
-            target_scale = 0.5
-            scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
-            print(f"DEBUG: Model max dim: {max_dim}, Scale factor: {scale_factor}")
+    #     if found_mesh:
+    #         max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+    #         target_scale = 0.5
+    #         scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+    #         print(f"DEBUG: Model max dim: {max_dim}, Scale factor: {scale_factor}")
             
-            # Apply scale to root objects of the model
-            for obj in model_objects:
-                if obj.parent is None:
-                    obj.scale = obj.scale * scale_factor
-            bpy.context.view_layer.update()
+    #         # Apply scale to root objects of the model
+    #         for obj in model_objects:
+    #             if obj.parent is None:
+    #                 obj.scale = obj.scale * scale_factor
+    #         bpy.context.view_layer.update()
 
-            # Center the model first
-            # Recalculate bbox after scale
-            bbox_min = (math.inf,) * 3
-            bbox_max = (-math.inf,) * 3
-            for obj in model_objects:
-                if obj.type == 'MESH':
-                    for coord in obj.bound_box:
-                        coord = mathutils.Vector(coord)
-                        coord = obj.matrix_world @ coord
-                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-                        bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+    #         # Center the model first
+    #         # Recalculate bbox after scale
+    #         bbox_min = (math.inf,) * 3
+    #         bbox_max = (-math.inf,) * 3
+    #         for obj in model_objects:
+    #             if obj.type == 'MESH':
+    #                 for coord in obj.bound_box:
+    #                     coord = mathutils.Vector(coord)
+    #                     coord = obj.matrix_world @ coord
+    #                     bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+    #                     bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
             
-            current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
-            centering_offset = -current_center
+    #         current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
+    #         centering_offset = -current_center
             
-            # Also move up to touch ground
-            # After centering, min z will be -height/2. We want min z = 0.
-            # So we add height/2 to z.
-            # Or just calculate min z after centering and subtract it.
+    #         # Also move up to touch ground
+    #         # After centering, min z will be -height/2. We want min z = 0.
+    #         # So we add height/2 to z.
+    #         # Or just calculate min z after centering and subtract it.
             
-            # First center
-            for obj in model_objects:
-                if obj.parent is None:
-                    obj.matrix_world.translation += centering_offset
-            bpy.context.view_layer.update()
+    #         # First center
+    #         for obj in model_objects:
+    #             if obj.parent is None:
+    #                 obj.matrix_world.translation += centering_offset
+    #         bpy.context.view_layer.update()
             
-            # Then move to ground
-            bbox_min = (math.inf,) * 3
-            for obj in model_objects:
-                if obj.type == 'MESH':
-                    for coord in obj.bound_box:
-                        coord = mathutils.Vector(coord)
-                        coord = obj.matrix_world @ coord
-                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+    #         # Then move to ground
+    #         bbox_min = (math.inf,) * 3
+    #         for obj in model_objects:
+    #             if obj.type == 'MESH':
+    #                 for coord in obj.bound_box:
+    #                     coord = mathutils.Vector(coord)
+    #                     coord = obj.matrix_world @ coord
+    #                     bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
             
-            ground_offset = mathutils.Vector((0, 0, -bbox_min[2]))
-            for obj in model_objects:
-                if obj.parent is None:
-                    obj.matrix_world.translation += ground_offset
-            bpy.context.view_layer.update()
+    #         ground_offset = mathutils.Vector((0, 0, -bbox_min[2]))
+    #         for obj in model_objects:
+    #             if obj.parent is None:
+    #                 obj.matrix_world.translation += ground_offset
+    #         bpy.context.view_layer.update()
 
-            # Now find a valid position for the model avoiding collision with cylinder
-            valid_pos_found = False
-            original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
+    #         # Now find a valid position for the model avoiding collision with cylinder
+    #         valid_pos_found = False
+    #         original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
             
-            # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
-            # We try positions in a shell around origin
-            for _ in range(50):
-                dist = random.uniform(0.1, 0.8) # Try slightly closer range first
-                theta = random.uniform(0, 2*math.pi)
-                # phi = random.uniform(0, math.pi) # Don't vary phi, keep on ground
+    #         # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
+    #         # We try positions in a shell around origin
+    #         for _ in range(50):
+    #             dist = random.uniform(0.1, 0.8) # Try slightly closer range first
+    #             theta = random.uniform(0, 2*math.pi)
+    #             # phi = random.uniform(0, math.pi) # Don't vary phi, keep on ground
                 
-                x = dist * math.cos(theta)
-                y = dist * math.sin(theta)
-                z = 0 # Keep z offset 0 relative to ground-touching position
+    #             x = dist * math.cos(theta)
+    #             y = dist * math.sin(theta)
+    #             z = 0 # Keep z offset 0 relative to ground-touching position
                 
-                offset = mathutils.Vector((x, y, z))
+    #             offset = mathutils.Vector((x, y, z))
                 
-                # Move model
-                for obj in model_objects:
-                    if obj.parent is None:
-                        # Reset to centered position first (which is original_locations + centering_offset applied earlier)
-                        # Wait, we updated translation in place. So original_locations stores the centered location.
-                        obj.location = original_locations[obj] + offset
+    #             # Move model
+    #             for obj in model_objects:
+    #                 if obj.parent is None:
+    #                     # Reset to centered position first (which is original_locations + centering_offset applied earlier)
+    #                     # Wait, we updated translation in place. So original_locations stores the centered location.
+    #                     obj.location = original_locations[obj] + offset
                 
-                bpy.context.view_layer.update()
+    #             bpy.context.view_layer.update()
                 
-                # Check collision with cylinder
-                is_colliding = False
-                if cylinder:
-                    for obj in model_objects:
-                        if obj.type == 'MESH':
-                            if check_collision(cylinder, obj):
-                                is_colliding = True
-                                break
+    #             # Check collision with cylinder
+    #             is_colliding = False
+    #             if cylinder:
+    #                 for obj in model_objects:
+    #                     if obj.type == 'MESH':
+    #                         if check_collision(cylinder, obj):
+    #                             is_colliding = True
+    #                             break
                 
-                if not is_colliding:
-                    valid_pos_found = True
-                    print(f"DEBUG: Found valid position at offset {offset}")
-                    break
+    #             if not is_colliding:
+    #                 valid_pos_found = True
+    #                 print(f"DEBUG: Found valid position at offset {offset}")
+    #                 break
             
-            if not valid_pos_found:
-                print("DEBUG: Could not find collision-free position, using last attempt.")
-                # Or fallback to a safer distance
-                fallback_offset = mathutils.Vector((1.0, 0, 0))
-                for obj in model_objects:
-                    if obj.parent is None:
-                        obj.location = original_locations[obj] + fallback_offset
-                bpy.context.view_layer.update()
+    #         if not valid_pos_found:
+    #             print("DEBUG: Could not find collision-free position, using last attempt.")
+    #             # Or fallback to a safer distance
+    #             fallback_offset = mathutils.Vector((1.0, 0, 0))
+    #             for obj in model_objects:
+    #                 if obj.parent is None:
+    #                     obj.location = original_locations[obj] + fallback_offset
+    #             bpy.context.view_layer.update()
     
     # Add LQ model
     existing_objects = []
