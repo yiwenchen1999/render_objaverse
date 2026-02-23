@@ -118,6 +118,60 @@ def render_core(args: Options, groups_id = 0):
             except Exception as e:
                 print(f"Error applying texture: {e}")
 
+    def add_textured_plane(texture_dir):
+        # Create a large plane
+        size = random.uniform(5.0, 10.0)
+        bpy.ops.mesh.primitive_plane_add(size=size)
+        plane = bpy.context.active_object
+        plane.name = "GroundPlane"
+        
+        # Rotate arbitrarily around up axis
+        plane.rotation_euler = [0, 0, random.uniform(0, 2*math.pi)]
+        
+        # Texture
+        if os.path.exists(texture_dir):
+            try:
+                subdirs = [d for d in os.listdir(texture_dir) if os.path.isdir(os.path.join(texture_dir, d))]
+                if subdirs:
+                    chosen_subdir = random.choice(subdirs)
+                    search_path = os.path.join(texture_dir, chosen_subdir)
+                    
+                    candidates = []
+                    for root, dirs, files in os.walk(search_path):
+                        for file in files:
+                            if file.lower().endswith(('.jpg', '.png', '.jpeg', '.exr')):
+                                candidates.append(os.path.join(root, file))
+                    
+                    diff_candidates = [f for f in candidates if any(k in f.lower() for k in ['diff', 'col', 'albedo'])]
+                    
+                    if diff_candidates:
+                        texture_path = random.choice(diff_candidates)
+                        
+                        mat = bpy.data.materials.new(name="PlaneMaterial")
+                        mat.use_nodes = True
+                        nodes = mat.node_tree.nodes
+                        links = mat.node_tree.links
+                        bsdf = nodes.get("Principled BSDF")
+                        
+                        tex_image = nodes.new('ShaderNodeTexImage')
+                        try:
+                            img = bpy.data.images.load(texture_path)
+                            tex_image.image = img
+                            links.new(tex_image.outputs['Color'], bsdf.inputs['Base Color'])
+                        except Exception as e:
+                            print(f"Could not load texture {texture_path}: {e}")
+                            
+                        if plane.data.materials:
+                            plane.data.materials[0] = mat
+                        else:
+                            plane.data.materials.append(mat)
+                            
+                        bpy.ops.object.mode_set(mode='EDIT')
+                        bpy.ops.uv.smart_project()
+                        bpy.ops.object.mode_set(mode='OBJECT')
+            except Exception as e:
+                print(f"Error applying texture to plane: {e}")
+
     def check_collision(obj1, obj2):
         """
         Check if two objects are colliding using BVH Tree.
@@ -178,6 +232,9 @@ def render_core(args: Options, groups_id = 0):
 
     #& 1.preparing the scene
     #* 1.1 prepare the 3d model
+    # Add ground plane first
+    add_textured_plane(args.texture_dir)
+    
     # Load model first so we can check collision
     file_path = args.three_d_model_path
     with stdout_redirected():
@@ -186,7 +243,7 @@ def render_core(args: Options, groups_id = 0):
     # Rename the imported object(s)
     # We identify imported objects by checking what's currently in scene (before cylinder)
     # Actually, easier to just get all objects now, rename them, then add cylinder
-    imported_objects = [obj for obj in bpy.context.scene.objects]
+    imported_objects = [obj for obj in bpy.context.scene.objects if obj.name != "GroundPlane"]
     if imported_objects:
         # Rename the last one to shape, but we will use imported_objects list for scaling
         imported_objects[-1].name = "shape"
@@ -216,12 +273,30 @@ def render_core(args: Options, groups_id = 0):
         target_scale = 0.5
         scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
         cylinder.scale = cylinder.scale * scale_factor
+        
+        # Move cylinder to touch ground
+        # Ground is at z=0 (plane local z=0). Cylinder local origin is center.
+        # Height is depth.
+        # Wait, cylinder primitive origin is at center.
+        # We need to move it up by half height * scale_z
+        # Actually, let's just use bbox min z
+        bpy.context.view_layer.update()
+        
+        bbox_min = (math.inf,) * 3
+        for coord in cylinder.bound_box:
+            coord = mathutils.Vector(coord)
+            coord = cylinder.matrix_world @ coord
+            bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+        
+        # Move up so min z is 0
+        cylinder.location.z -= bbox_min[2]
+        
         bpy.context.view_layer.update()
         print(f"DEBUG: Cylinder scaled. Factor: {scale_factor}, New Scale: {cylinder.scale}")
 
     # Then scale the imported shape
     # Use the list we captured earlier
-    model_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive"]
+    model_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive" and obj.name != "GroundPlane"]
     
     if model_objects:
         # Compute bbox for these objects
@@ -264,9 +339,30 @@ def render_core(args: Options, groups_id = 0):
             current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
             centering_offset = -current_center
             
+            # Also move up to touch ground
+            # After centering, min z will be -height/2. We want min z = 0.
+            # So we add height/2 to z.
+            # Or just calculate min z after centering and subtract it.
+            
+            # First center
             for obj in model_objects:
                 if obj.parent is None:
                     obj.matrix_world.translation += centering_offset
+            bpy.context.view_layer.update()
+            
+            # Then move to ground
+            bbox_min = (math.inf,) * 3
+            for obj in model_objects:
+                if obj.type == 'MESH':
+                    for coord in obj.bound_box:
+                        coord = mathutils.Vector(coord)
+                        coord = obj.matrix_world @ coord
+                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+            
+            ground_offset = mathutils.Vector((0, 0, -bbox_min[2]))
+            for obj in model_objects:
+                if obj.parent is None:
+                    obj.matrix_world.translation += ground_offset
             bpy.context.view_layer.update()
 
             # Now find a valid position for the model avoiding collision with cylinder
@@ -276,13 +372,13 @@ def render_core(args: Options, groups_id = 0):
             # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
             # We try positions in a shell around origin
             for _ in range(50):
-                dist = random.uniform(0.1, 0.8) # Try slightly closer range first
+                dist = random.uniform(0.1, 0.3) # Try slightly closer range first
                 theta = random.uniform(0, 2*math.pi)
-                phi = random.uniform(0, math.pi)
+                # phi = random.uniform(0, math.pi) # Don't vary phi, keep on ground
                 
-                x = dist * math.sin(phi) * math.cos(theta)
-                y = dist * math.sin(phi) * math.sin(theta)
-                z = dist * math.cos(phi)
+                x = dist * math.cos(theta)
+                y = dist * math.sin(theta)
+                z = 0 # Keep z offset 0 relative to ground-touching position
                 
                 offset = mathutils.Vector((x, y, z))
                 
@@ -388,8 +484,8 @@ def render_core(args: Options, groups_id = 0):
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
-            min_dist_to_origin=0.8,
-            max_dist_to_origin=1.3,          # usually keep min=max for consistent radius
+            min_dist_to_origin=1.0,
+            max_dist_to_origin=2.0,          # usually keep min=max for consistent radius
             min_theta_in_degree=0,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
             z_up=True
@@ -397,8 +493,8 @@ def render_core(args: Options, groups_id = 0):
         eyes_traj = gen_pt_traj_around_origin(
             seed=seed_view,
             N=args.num_test_views,
-            min_dist_to_origin=1.0,
-            max_dist_to_origin=1.0,
+            min_dist_to_origin=1.5,
+            max_dist_to_origin=1.5,
             theta_in_degree=60,
             z_up=True
         )
