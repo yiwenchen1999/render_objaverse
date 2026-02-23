@@ -38,6 +38,7 @@ class Options:
     csv_path: str = "test_obj.csv"  # Path to CSV file containing model indices and UIDs
     rendered_dir_name: str = "render_scene_test"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
     texture_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_textures" # Path to texture files
+    model_lq_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_models" # Path to LQ models
 
 
 def render_core(args: Options, groups_id = 0):
@@ -171,6 +172,132 @@ def render_core(args: Options, groups_id = 0):
                         bpy.ops.object.mode_set(mode='OBJECT')
             except Exception as e:
                 print(f"Error applying texture to plane: {e}")
+
+    def add_lq_model(model_dir, existing_objects=[]):
+        if not os.path.exists(model_dir):
+            print(f"LQ Model dir {model_dir} does not exist.")
+            return
+
+        files = glob.glob(os.path.join(model_dir, "*.blend"))
+        if not files:
+            print(f"No .blend files found in {model_dir}")
+            return
+        
+        filepath = random.choice(files)
+        print(f"Loading LQ model from {filepath}")
+        
+        # Load objects from .blend file
+        with bpy.data.libraries.load(filepath) as (data_from, data_to):
+            data_to.objects = data_from.objects
+            
+        lq_objects = []
+        for obj in data_to.objects:
+            if obj is not None:
+                bpy.context.collection.objects.link(obj)
+                lq_objects.append(obj)
+                
+        if not lq_objects:
+            print("No objects loaded from .blend file")
+            return
+
+        # Scale
+        bbox_min = (math.inf,) * 3
+        bbox_max = (-math.inf,) * 3
+        found_mesh = False
+        
+        # Ensure we are in object mode
+        if bpy.context.object and bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+            
+        for obj in lq_objects:
+            if obj.type == 'MESH':
+                found_mesh = True
+                for coord in obj.bound_box:
+                    coord = mathutils.Vector(coord)
+                    coord = obj.matrix_world @ coord
+                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+                    
+        if found_mesh:
+            max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+            target_scale = 0.5
+            scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+            
+            for obj in lq_objects:
+                if obj.parent is None:
+                    obj.scale = obj.scale * scale_factor
+            bpy.context.view_layer.update()
+            
+            # Center and move to ground
+            bbox_min = (math.inf,) * 3
+            bbox_max = (-math.inf,) * 3
+            for obj in lq_objects:
+                if obj.type == 'MESH':
+                    for coord in obj.bound_box:
+                        coord = mathutils.Vector(coord)
+                        coord = obj.matrix_world @ coord
+                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                        bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+            
+            current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
+            centering_offset = -current_center
+            
+            for obj in lq_objects:
+                if obj.parent is None:
+                    obj.matrix_world.translation += centering_offset
+            bpy.context.view_layer.update()
+            
+            # Move to ground (z=0)
+            bbox_min_z = math.inf
+            for obj in lq_objects:
+                if obj.type == 'MESH':
+                    for coord in obj.bound_box:
+                        coord = mathutils.Vector(coord)
+                        coord = obj.matrix_world @ coord
+                        if coord.z < bbox_min_z:
+                            bbox_min_z = coord.z
+            
+            ground_offset = mathutils.Vector((0, 0, -bbox_min_z))
+            for obj in lq_objects:
+                if obj.parent is None:
+                    obj.matrix_world.translation += ground_offset
+            bpy.context.view_layer.update()
+            
+            # Position avoiding collision
+            valid_pos_found = False
+            original_locations = {obj: obj.location.copy() for obj in lq_objects if obj.parent is None}
+            
+            for _ in range(50):
+                dist = random.uniform(0.1, 0.8)
+                theta = random.uniform(0, 2*math.pi)
+                x = dist * math.cos(theta)
+                y = dist * math.sin(theta)
+                z = 0
+                offset = mathutils.Vector((x, y, z))
+                
+                for obj in lq_objects:
+                    if obj.parent is None:
+                        obj.location = original_locations[obj] + offset
+                bpy.context.view_layer.update()
+                
+                is_colliding = False
+                for other_obj in existing_objects:
+                    if other_obj.type == 'MESH':
+                         for lq_obj in lq_objects:
+                             if lq_obj.type == 'MESH':
+                                 if check_collision(lq_obj, other_obj):
+                                     is_colliding = True
+                                     break
+                    if is_colliding:
+                        break
+                
+                if not is_colliding:
+                    valid_pos_found = True
+                    print(f"DEBUG: Found valid position for LQ model at offset {offset}")
+                    break
+            
+            if not valid_pos_found:
+                 print("DEBUG: Could not find collision-free position for LQ model.")
 
     def check_collision(obj1, obj2):
         """
@@ -372,7 +499,7 @@ def render_core(args: Options, groups_id = 0):
             # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
             # We try positions in a shell around origin
             for _ in range(50):
-                dist = random.uniform(0.1, 0.3) # Try slightly closer range first
+                dist = random.uniform(0.1, 0.8) # Try slightly closer range first
                 theta = random.uniform(0, 2*math.pi)
                 # phi = random.uniform(0, math.pi) # Don't vary phi, keep on ground
                 
@@ -413,6 +540,15 @@ def render_core(args: Options, groups_id = 0):
                     if obj.parent is None:
                         obj.location = original_locations[obj] + fallback_offset
                 bpy.context.view_layer.update()
+    
+    # Add LQ model
+    existing_objects = []
+    if cylinder:
+        existing_objects.append(cylinder)
+    if model_objects:
+        existing_objects.extend(model_objects)
+    
+    add_lq_model(args.model_lq_dir, existing_objects)
     
     # Debug: Print all objects final locations
     for obj in bpy.context.scene.objects:
@@ -484,17 +620,17 @@ def render_core(args: Options, groups_id = 0):
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
-            min_dist_to_origin=1.0,
-            max_dist_to_origin=2.0,          # usually keep min=max for consistent radius
-            min_theta_in_degree=0,           # 0 for full sphere, 10/20 for hemisphere
+            min_dist_to_origin=2.0,
+            max_dist_to_origin=4.0,          # usually keep min=max for consistent radius
+            min_theta_in_degree=15,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
             z_up=True
         )
         eyes_traj = gen_pt_traj_around_origin(
             seed=seed_view,
             N=args.num_test_views,
-            min_dist_to_origin=1.5,
-            max_dist_to_origin=1.5,
+            min_dist_to_origin=2,
+            max_dist_to_origin=2,
             theta_in_degree=60,
             z_up=True
         )
