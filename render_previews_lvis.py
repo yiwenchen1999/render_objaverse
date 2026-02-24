@@ -24,11 +24,11 @@ error_list = []
 @dataclass
 class Options:
     """预览图渲染脚本配置"""
-    csv_path: str = './filtered_uids_lvis.csv'  # CSV 文件路径
+    csv_path: str = './test_obj.csv'  # CSV 文件路径
     dataset_path: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'  # 数据集路径
     env_map_list_json: str = './assets/hdri/polyhaven_hdris.json'  # 环境贴图列表
     env_map_dir_path: str = '/projects/vig/Datasets/objaverse/envmaps/hdris'  # 环境贴图目录
-    output_dir: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/rendered_previews'  # 输出目录
+    output_dir: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glb_previews'  # 输出目录
     seed: Optional[int] = None  # 随机种子
     group_start: int = 0  # 起始索引
     group_end: int = 10  # 结束索引
