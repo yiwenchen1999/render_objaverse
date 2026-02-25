@@ -229,7 +229,8 @@ def render_core(args: Options, groups_id = 0):
                          for model_obj in model_objects:
                              if model_obj.type == 'MESH':
                                  if check_collision(model_obj, other_obj):
-                                     is_colliding = True
+                                     is_colliding = False
+                                     print(f"collision found")
                                      break
                     if is_colliding:
                         break
