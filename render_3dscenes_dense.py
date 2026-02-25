@@ -207,7 +207,7 @@ def render_core(args: Options, groups_id = 0):
             original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
             
             for _ in range(100):
-                dist = random.triangular(0.5, 2, 0.5)
+                dist = random.triangular(0, 10, 1)
                 theta = random.uniform(0, 2*math.pi)
                 x = dist * math.cos(theta)
                 y = dist * math.sin(theta)
@@ -366,15 +366,22 @@ def render_core(args: Options, groups_id = 0):
     # Start with ground plane
     existing_objects = [obj for obj in bpy.context.scene.objects if obj.name == "GroundPlane"]
     
-    # --- Load Main GLB Object ---
-    # This is the primary object for this render job
-    main_objects = add_glb_model(args.three_d_model_path, existing_objects, scale_range=(0.5, 1.0))
-    if main_objects:
-        existing_objects.extend(main_objects)
-        # Rename the last one to shape for legacy compatibility if needed (though we use main_objects list)
-        main_objects[-1].name = "shape"
-        bpy.context.view_layer.objects.active = main_objects[-1]
-    
+    # --- Load LQ Object (1) ---
+    # Load curated LQ list
+    lq_candidates = []
+    if os.path.exists(args.lq_list_path):
+        try:
+            with open(args.lq_list_path, 'r') as f:
+                lq_candidates = json.load(f)
+        except Exception as e:
+            print(f"Error loading LQ list: {e}")
+            
+    if lq_candidates:
+        print("Loading 1 LQ object")
+        new_objs = add_lq_model(args.model_lq_dir, lq_candidates, existing_objects)
+        if new_objs:
+            existing_objects.extend(new_objs)
+
     # --- Load Additional GLB Objects (0-7) ---
     # Load curated GLB list
     glb_candidates = []
@@ -397,22 +404,6 @@ def render_core(args: Options, groups_id = 0):
             new_objs = add_glb_model(glb_path, existing_objects, scale_range=(0.5, 1.0))
             if new_objs:
                 existing_objects.extend(new_objs)
-    
-    # --- Load LQ Object (1) ---
-    # Load curated LQ list
-    lq_candidates = []
-    if os.path.exists(args.lq_list_path):
-        try:
-            with open(args.lq_list_path, 'r') as f:
-                lq_candidates = json.load(f)
-        except Exception as e:
-            print(f"Error loading LQ list: {e}")
-            
-    if lq_candidates:
-        print("Loading 1 LQ object")
-        new_objs = add_lq_model(args.model_lq_dir, lq_candidates, existing_objects)
-        if new_objs:
-            existing_objects.extend(new_objs)
     
     # Debug: Print all objects final locations
     for obj in bpy.context.scene.objects:
