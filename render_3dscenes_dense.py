@@ -206,8 +206,8 @@ def render_core(args: Options, groups_id = 0):
             valid_pos_found = False
             original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
             
-            for _ in range(100):
-                dist = random.triangular(0, 5, 0.5)
+            for _ in range(1000):
+                dist = random.uniform(0, 1.5)
                 theta = random.uniform(0, 2*math.pi)
                 x = dist * math.cos(theta)
                 y = dist * math.sin(theta)
