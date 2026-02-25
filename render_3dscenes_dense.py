@@ -12,6 +12,7 @@ import imageio
 import numpy as np
 import simple_parsing
 import shutil
+import hashlib
 error_list = []
 
 @dataclass
@@ -45,6 +46,9 @@ class Options:
     lq_list_path: str = 'assets/object_ids/polyhaven_models_train.json'
     glb_list_path: str = 'test_obj_curated.csv'
     glbs_root_path: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
+    
+    # Random seed for scene composition
+    scene_seed: Optional[int] = None
 
 
 def render_core(args: Options, groups_id = 0):
@@ -402,6 +406,14 @@ def render_core(args: Options, groups_id = 0):
 
     #& 1.preparing the scene
     #* 1.1 prepare the 3d model
+    
+    # Set scene seed if provided
+    if args.scene_seed is not None:
+        # We use a combination of scene_seed and groups_id to vary per group if needed,
+        # or just set it once. Let's make it deterministic per group.
+        # compute the output_dir str into a seed integer based on the hash of the string:
+        current_seed = int(hashlib.sha256(args.output_dir.encode()).hexdigest(), 16) % 1000000
+    
     # Add ground plane first
     add_textured_plane(args.texture_dir)
     
@@ -439,7 +451,7 @@ def render_core(args: Options, groups_id = 0):
             print(f"Error loading GLB list: {e}")
     
     if glb_candidates:
-        num_glbs = random.randint(0, 7)
+        num_glbs = random.randint(2, 7)
         print(f"Loading {num_glbs} additional GLB objects")
         for _ in range(num_glbs):
             idx, uid = random.choice(glb_candidates)
@@ -522,7 +534,7 @@ def render_core(args: Options, groups_id = 0):
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
             min_dist_to_origin=2.5,
-            max_dist_to_origin=2.5,          # usually keep min=max for consistent radius
+            max_dist_to_origin=3.5,          # usually keep min=max for consistent radius
             min_theta_in_degree=20,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=80,         # 90 or 70 for upper hemisphere only
             z_up=True
@@ -530,8 +542,8 @@ def render_core(args: Options, groups_id = 0):
         eyes_traj = gen_pt_traj_around_origin(
             seed=seed_view,
             N=args.num_test_views,
-            min_dist_to_origin=2.5,
-            max_dist_to_origin=2.5,
+            min_dist_to_origin=3.0,
+            max_dist_to_origin=3.0,
             theta_in_degree=60,
             z_up=True
         )
@@ -1016,9 +1028,12 @@ def render_core(args: Options, groups_id = 0):
 
 if __name__ == '__main__':
     dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
-    random.seed(48)
 
     args: Options = simple_parsing.parse(Options)
+    if args.scene_seed is not None:
+        random.seed(args.scene_seed)
+        np.random.seed(args.scene_seed)
+        print(f"Setting scene random seed to {args.scene_seed}")
     print(Options)
     import csv
     index_uid_list = []
