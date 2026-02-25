@@ -6,6 +6,7 @@ import random
 from typing import Optional
 import sys
 import glob
+import csv
 
 import imageio
 import numpy as np
@@ -39,6 +40,11 @@ class Options:
     rendered_dir_name: str = "render_scene_test"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
     texture_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_textures" # Path to texture files
     model_lq_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_models" # Path to LQ models
+    
+    # New paths for curated lists
+    lq_list_path: str = 'assets/object_ids/polyhaven_models_train.json'
+    glb_list_path: str = 'test_obj_curated.csv'
+    glbs_root_path: str = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
 
 
 def render_core(args: Options, groups_id = 0):
@@ -53,71 +59,6 @@ def render_core(args: Options, groups_id = 0):
     from bpy_helper.random import gen_random_pts_around_origin, gen_pt_traj_around_origin
     from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
-
-    def add_textured_cylinder(texture_dir, model_objects=None):
-        # Calculate scene bounds (of the existing object)
-        # We assume the object is centered at (0,0,0) and scaled to fit in unit sphere (radius 0.5)
-        # So we can just generate random parameters.
-        
-        radius = random.uniform(0.1, 0.4)
-        depth = random.uniform(0.5, 1.5)
-        
-        bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth)
-        cylinder = bpy.context.active_object
-        cylinder.name = "CylinderPrimitive"
-        
-        # Position - Randomly placed but avoiding collision with model_objects
-        from mathutils.bvhtree import BVHTree
-        
-        # If model_objects are provided, we try to place the cylinder such that it doesn't collide
-        # But wait, model_objects are not loaded yet when this function was originally called.
-        # We need to change the logic: load model first, then add cylinder.
-        
-        cylinder.rotation_euler = [0, 0, random.uniform(0, 2*math.pi)]
-        
-        # Texture
-        if os.path.exists(texture_dir):
-            try:
-                subdirs = [d for d in os.listdir(texture_dir) if os.path.isdir(os.path.join(texture_dir, d))]
-                if subdirs:
-                    chosen_subdir = random.choice(subdirs)
-                    search_path = os.path.join(texture_dir, chosen_subdir)
-                    
-                    candidates = []
-                    for root, dirs, files in os.walk(search_path):
-                        for file in files:
-                            if file.lower().endswith(('.jpg', '.png', '.jpeg', '.exr')):
-                                candidates.append(os.path.join(root, file))
-                    
-                    diff_candidates = [f for f in candidates if any(k in f.lower() for k in ['diff', 'col', 'albedo'])]
-                    
-                    if diff_candidates:
-                        texture_path = random.choice(diff_candidates)
-                        
-                        mat = bpy.data.materials.new(name="CylinderMaterial")
-                        mat.use_nodes = True
-                        nodes = mat.node_tree.nodes
-                        links = mat.node_tree.links
-                        bsdf = nodes.get("Principled BSDF")
-                        
-                        tex_image = nodes.new('ShaderNodeTexImage')
-                        try:
-                            img = bpy.data.images.load(texture_path)
-                            tex_image.image = img
-                            links.new(tex_image.outputs['Color'], bsdf.inputs['Base Color'])
-                        except Exception as e:
-                            print(f"Could not load texture {texture_path}: {e}")
-                            
-                        if cylinder.data.materials:
-                            cylinder.data.materials[0] = mat
-                        else:
-                            cylinder.data.materials.append(mat)
-                            
-                        bpy.ops.object.mode_set(mode='EDIT')
-                        bpy.ops.uv.smart_project()
-                        bpy.ops.object.mode_set(mode='OBJECT')
-            except Exception as e:
-                print(f"Error applying texture: {e}")
 
     def add_textured_plane(texture_dir):
         # Create a large plane
@@ -173,138 +114,6 @@ def render_core(args: Options, groups_id = 0):
             except Exception as e:
                 print(f"Error applying texture to plane: {e}")
 
-    def add_lq_model(model_dir, existing_objects=[]):
-        if not os.path.exists(model_dir):
-            print(f"LQ Model dir {model_dir} does not exist.")
-            return
-
-        # Recursively find .blend files
-        files = glob.glob(os.path.join(model_dir, "**", "*.blend"), recursive=True)
-        if not files:
-            print(f"No .blend files found in {model_dir}")
-            return
-        
-        filepath = random.choice(files)
-        print(f"Loading LQ model from {filepath}")
-        
-        # Load objects from .blend file
-        with bpy.data.libraries.load(filepath) as (data_from, data_to):
-            data_to.objects = data_from.objects
-            
-        lq_objects = []
-        for obj in data_to.objects:
-            if obj is not None:
-                bpy.context.collection.objects.link(obj)
-                lq_objects.append(obj)
-                
-        if not lq_objects:
-            print("No objects loaded from .blend file")
-            return
-
-        # Scale
-        bbox_min = (math.inf,) * 3
-        bbox_max = (-math.inf,) * 3
-        found_mesh = False
-        
-        # Ensure we are in object mode
-        if bpy.context.object and bpy.context.object.mode != 'OBJECT':
-            bpy.ops.object.mode_set(mode='OBJECT')
-            
-        for obj in lq_objects:
-            if obj.type == 'MESH':
-                found_mesh = True
-                for coord in obj.bound_box:
-                    coord = mathutils.Vector(coord)
-                    coord = obj.matrix_world @ coord
-                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
-                    
-        if found_mesh:
-            max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
-            target_scale = 0.5
-            scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
-            
-            for obj in lq_objects:
-                if obj.parent is None:
-                    obj.scale = obj.scale * scale_factor
-            bpy.context.view_layer.update()
-            
-            # Center and move to ground
-            bbox_min = (math.inf,) * 3
-            bbox_max = (-math.inf,) * 3
-            for obj in lq_objects:
-                if obj.type == 'MESH':
-                    for coord in obj.bound_box:
-                        coord = mathutils.Vector(coord)
-                        coord = obj.matrix_world @ coord
-                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-                        bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
-            
-            current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
-            centering_offset = -current_center
-            
-            for obj in lq_objects:
-                if obj.parent is None:
-                    obj.matrix_world.translation += centering_offset
-            bpy.context.view_layer.update()
-            
-            # Move to ground (z=0)
-            bbox_min_z = math.inf
-            for obj in lq_objects:
-                if obj.type == 'MESH':
-                    for coord in obj.bound_box:
-                        coord = mathutils.Vector(coord)
-                        coord = obj.matrix_world @ coord
-                        if coord.z < bbox_min_z:
-                            bbox_min_z = coord.z
-            
-            ground_offset = mathutils.Vector((0, 0, -bbox_min_z))
-            for obj in lq_objects:
-                if obj.parent is None:
-                    obj.matrix_world.translation += ground_offset
-            bpy.context.view_layer.update()
-            
-            # Position avoiding collision
-            valid_pos_found = False
-            original_locations = {obj: obj.location.copy() for obj in lq_objects if obj.parent is None}
-            
-            for _ in range(100):
-                dist = random.triangular(0.1, 0.8, 0.2)
-                theta = random.uniform(0, 2*math.pi)
-                x = dist * math.cos(theta)
-                y = dist * math.sin(theta)
-                z = 0
-                offset = mathutils.Vector((x, y, z))
-                
-                for obj in lq_objects:
-                    if obj.parent is None:
-                        obj.location = original_locations[obj] + offset
-                bpy.context.view_layer.update()
-                
-                is_colliding = False
-                for other_obj in existing_objects:
-                    if other_obj.type == 'MESH':
-                         for lq_obj in lq_objects:
-                             if lq_obj.type == 'MESH':
-                                 if check_collision(lq_obj, other_obj):
-                                     is_colliding = True
-                                     break
-                    if is_colliding:
-                        break
-                
-                if not is_colliding:
-                    valid_pos_found = True
-                    print(f"DEBUG: Found valid position for LQ model at offset {offset}")
-                    break
-            
-            if not valid_pos_found:
-                 print("DEBUG: Could not find collision-free position for LQ model. Moving to fallback.")
-                 fallback_offset = mathutils.Vector((-1.0, 0, 0))
-                 for obj in lq_objects:
-                    if obj.parent is None:
-                        obj.location = original_locations[obj] + fallback_offset
-                 bpy.context.view_layer.update()
-
     def check_collision(obj1, obj2):
         """
         Check if two objects are colliding using BVH Tree.
@@ -323,8 +132,180 @@ def render_core(args: Options, groups_id = 0):
             overlap_pairs = bvh1.overlap(bvh2)
             return len(overlap_pairs) > 0
         except Exception as e:
-            print(f"BVH collision check failed: {e}")
+            # print(f"BVH collision check failed: {e}")
             return False
+
+    def place_object_randomly(model_objects, existing_objects, scale_range=(0.5, 1.0)):
+        if not model_objects:
+            return
+
+        # 1. Scale
+        bbox_min = (math.inf,) * 3
+        bbox_max = (-math.inf,) * 3
+        found_mesh = False
+        
+        # Ensure we are in object mode
+        if bpy.context.object and bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+            
+        for obj in model_objects:
+            if obj.type == 'MESH':
+                found_mesh = True
+                for coord in obj.bound_box:
+                    coord = mathutils.Vector(coord)
+                    coord = obj.matrix_world @ coord
+                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+                    
+        if found_mesh:
+            max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+            target_scale = random.uniform(*scale_range)
+            scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+            
+            for obj in model_objects:
+                if obj.parent is None:
+                    obj.scale = obj.scale * scale_factor
+            bpy.context.view_layer.update()
+            
+            # 2. Center and move to ground
+            bbox_min = (math.inf,) * 3
+            bbox_max = (-math.inf,) * 3
+            for obj in model_objects:
+                if obj.type == 'MESH':
+                    for coord in obj.bound_box:
+                        coord = mathutils.Vector(coord)
+                        coord = obj.matrix_world @ coord
+                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                        bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+            
+            current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
+            centering_offset = -current_center
+            
+            for obj in model_objects:
+                if obj.parent is None:
+                    obj.matrix_world.translation += centering_offset
+            bpy.context.view_layer.update()
+            
+            # Move to ground (z=0)
+            bbox_min_z = math.inf
+            for obj in model_objects:
+                if obj.type == 'MESH':
+                    for coord in obj.bound_box:
+                        coord = mathutils.Vector(coord)
+                        coord = obj.matrix_world @ coord
+                        if coord.z < bbox_min_z:
+                            bbox_min_z = coord.z
+            
+            ground_offset = mathutils.Vector((0, 0, -bbox_min_z))
+            for obj in model_objects:
+                if obj.parent is None:
+                    obj.matrix_world.translation += ground_offset
+            bpy.context.view_layer.update()
+            
+            # 3. Position avoiding collision
+            valid_pos_found = False
+            original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
+            
+            for _ in range(100):
+                dist = random.triangular(0.1, 0.8, 0.2)
+                theta = random.uniform(0, 2*math.pi)
+                x = dist * math.cos(theta)
+                y = dist * math.sin(theta)
+                z = 0
+                offset = mathutils.Vector((x, y, z))
+                
+                for obj in model_objects:
+                    if obj.parent is None:
+                        obj.location = original_locations[obj] + offset
+                bpy.context.view_layer.update()
+                
+                is_colliding = False
+                for other_obj in existing_objects:
+                    if other_obj.type == 'MESH':
+                         for model_obj in model_objects:
+                             if model_obj.type == 'MESH':
+                                 if check_collision(model_obj, other_obj):
+                                     is_colliding = True
+                                     break
+                    if is_colliding:
+                        break
+                
+                if not is_colliding:
+                    valid_pos_found = True
+                    # print(f"DEBUG: Found valid position at offset {offset}")
+                    break
+            
+            if not valid_pos_found:
+                 print("DEBUG: Could not find collision-free position. Moving to fallback.")
+                 fallback_offset = mathutils.Vector((-10.0, 0, 0)) # Move far away if fails
+                 for obj in model_objects:
+                    if obj.parent is None:
+                        obj.location = original_locations[obj] + fallback_offset
+                 bpy.context.view_layer.update()
+
+    def add_lq_model(model_dir, lq_candidates, existing_objects=[]):
+        if not os.path.exists(model_dir):
+            print(f"LQ Model dir {model_dir} does not exist.")
+            return []
+
+        if not lq_candidates:
+            print("No LQ candidates provided")
+            return []
+        
+        # Pick one random LQ model
+        model_id = random.choice(lq_candidates)
+        
+        # Try to find the .blend file
+        # Assumption: model_dir/{model_id}/{model_id}.blend
+        filepath = os.path.join(model_dir, model_id, f"{model_id}.blend")
+        
+        if not os.path.exists(filepath):
+            # Try recursive search if direct path fails
+            # print(f"Direct path {filepath} not found, searching...")
+            files = glob.glob(os.path.join(model_dir, "**", f"{model_id}.blend"), recursive=True)
+            if files:
+                filepath = files[0]
+            else:
+                print(f"Could not find .blend file for {model_id}")
+                return []
+        
+        print(f"Loading LQ model: {model_id}")
+        
+        # Load objects from .blend file
+        with bpy.data.libraries.load(filepath) as (data_from, data_to):
+            data_to.objects = data_from.objects
+            
+        lq_objects = []
+        for obj in data_to.objects:
+            if obj is not None:
+                bpy.context.collection.objects.link(obj)
+                lq_objects.append(obj)
+                
+        if not lq_objects:
+            print("No objects loaded from .blend file")
+            return []
+
+        place_object_randomly(lq_objects, existing_objects, scale_range=(0.7, 1.0))
+        return lq_objects
+
+    def add_glb_model(filepath, existing_objects=[], scale_range=(0.5, 1.0)):
+        if not os.path.exists(filepath):
+            print(f"GLB file not found: {filepath}")
+            return []
+            
+        # Capture objects before import
+        objs_before = set(bpy.context.scene.objects)
+        
+        with stdout_redirected():
+            import_3d_model(filepath)
+            
+        objs_after = set(bpy.context.scene.objects)
+        new_objects = list(objs_after - objs_before)
+        
+        if new_objects:
+            place_object_randomly(new_objects, existing_objects, scale_range=scale_range)
+            
+        return new_objects
 
     def render_rgb_and_hint(output_path,idx = 0):
         # Get the last added object (assuming the new object is the most recently added one)
@@ -368,193 +349,57 @@ def render_core(args: Options, groups_id = 0):
     # Add ground plane first
     add_textured_plane(args.texture_dir)
     
-    # Load model first so we can check collision
-    file_path = args.three_d_model_path
-    with stdout_redirected():
-        import_3d_model(file_path)
+    # Track all objects in the scene to avoid collisions
+    # Start with ground plane
+    existing_objects = [obj for obj in bpy.context.scene.objects if obj.name == "GroundPlane"]
     
-    # Rename the imported object(s)
-    # We identify imported objects by checking what's currently in scene (before cylinder)
-    # Actually, easier to just get all objects now, rename them, then add cylinder
-    imported_objects = [obj for obj in bpy.context.scene.objects if obj.name != "GroundPlane"]
-    if imported_objects:
-        # Rename the last one to shape, but we will use imported_objects list for scaling
-        imported_objects[-1].name = "shape"
-        bpy.context.view_layer.objects.active = imported_objects[-1]
-        bpy.context.view_layer.update()
-
-    # Add cylinder
-    add_textured_cylinder(args.texture_dir)
+    # --- Load Main GLB Object ---
+    # This is the primary object for this render job
+    main_objects = add_glb_model(args.three_d_model_path, existing_objects, scale_range=(0.5, 1.0))
+    if main_objects:
+        existing_objects.extend(main_objects)
+        # Rename the last one to shape for legacy compatibility if needed (though we use main_objects list)
+        main_objects[-1].name = "shape"
+        bpy.context.view_layer.objects.active = main_objects[-1]
     
-    # Scale objects separately to target_scale=0.5
-    # First, scale the cylinder
-    cylinder = bpy.data.objects.get("CylinderPrimitive")
-    if cylinder:
-        # Reset cylinder scale first just in case
-        cylinder.scale = (1, 1, 1)
-        bpy.context.view_layer.update()
-        
-        # Calculate scale factor for cylinder
-        bbox_min = (math.inf,) * 3
-        bbox_max = (-math.inf,) * 3
-        for coord in cylinder.bound_box:
-            coord = mathutils.Vector(coord)
-            bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-            bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
-        
-        max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
-        target_scale = 0.5
-        scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
-        cylinder.scale = cylinder.scale * scale_factor
-        
-        # Move cylinder to touch ground
-        # Ground is at z=0 (plane local z=0). Cylinder local origin is center.
-        # Height is depth.
-        # Wait, cylinder primitive origin is at center.
-        # We need to move it up by half height * scale_z
-        # Actually, let's just use bbox min z
-        bpy.context.view_layer.update()
-        
-        bbox_min = (math.inf,) * 3
-        for coord in cylinder.bound_box:
-            coord = mathutils.Vector(coord)
-            coord = cylinder.matrix_world @ coord
-            bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-        
-        # Move up so min z is 0
-        cylinder.location.z -= bbox_min[2]
-        
-        bpy.context.view_layer.update()
-        print(f"DEBUG: Cylinder scaled. Factor: {scale_factor}, New Scale: {cylinder.scale}")
-
-    # Then scale the imported shape
-    # Use the list we captured earlier
-    model_objects = [obj for obj in bpy.context.scene.objects if obj.name != "CylinderPrimitive" and obj.name != "GroundPlane"]
+    # --- Load Additional GLB Objects (0-7) ---
+    # Load curated GLB list
+    glb_candidates = []
+    if os.path.exists(args.glb_list_path):
+        try:
+            with open(args.glb_list_path, 'r') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row) >= 2:
+                        glb_candidates.append((row[0].strip(), row[1].strip()))
+        except Exception as e:
+            print(f"Error loading GLB list: {e}")
     
-    if model_objects:
-        # Compute bbox for these objects
-        bbox_min = (math.inf,) * 3
-        bbox_max = (-math.inf,) * 3
-        found_mesh = False
-        for obj in model_objects:
-            if obj.type == 'MESH':
-                found_mesh = True
-                for coord in obj.bound_box:
-                    coord = mathutils.Vector(coord)
-                    coord = obj.matrix_world @ coord
-                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
-        
-        if found_mesh:
-            max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
-            target_scale = 0.5
-            scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
-            print(f"DEBUG: Model max dim: {max_dim}, Scale factor: {scale_factor}")
-            
-            # Apply scale to root objects of the model
-            for obj in model_objects:
-                if obj.parent is None:
-                    obj.scale = obj.scale * scale_factor
-            bpy.context.view_layer.update()
-
-            # Center the model first
-            # Recalculate bbox after scale
-            bbox_min = (math.inf,) * 3
-            bbox_max = (-math.inf,) * 3
-            for obj in model_objects:
-                if obj.type == 'MESH':
-                    for coord in obj.bound_box:
-                        coord = mathutils.Vector(coord)
-                        coord = obj.matrix_world @ coord
-                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-                        bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
-            
-            current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
-            centering_offset = -current_center
-            
-            # Also move up to touch ground
-            # After centering, min z will be -height/2. We want min z = 0.
-            # So we add height/2 to z.
-            # Or just calculate min z after centering and subtract it.
-            
-            # First center
-            for obj in model_objects:
-                if obj.parent is None:
-                    obj.matrix_world.translation += centering_offset
-            bpy.context.view_layer.update()
-            
-            # Then move to ground
-            bbox_min = (math.inf,) * 3
-            for obj in model_objects:
-                if obj.type == 'MESH':
-                    for coord in obj.bound_box:
-                        coord = mathutils.Vector(coord)
-                        coord = obj.matrix_world @ coord
-                        bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
-            
-            ground_offset = mathutils.Vector((0, 0, -bbox_min[2]))
-            for obj in model_objects:
-                if obj.parent is None:
-                    obj.matrix_world.translation += ground_offset
-            bpy.context.view_layer.update()
-
-            # Now find a valid position for the model avoiding collision with cylinder
-            valid_pos_found = False
-            original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
-            
-            # Cylinder is at (0,0,0) with radius ~0.1-0.4 scaled by factor.
-            # We try positions in a shell around origin
-            for _ in range(100):
-                dist = random.triangular(0.1, 0.8, 0.2) # Try slightly closer range first
-                theta = random.uniform(0, 2*math.pi)
-                # phi = random.uniform(0, math.pi) # Don't vary phi, keep on ground
-                
-                x = dist * math.cos(theta)
-                y = dist * math.sin(theta)
-                z = 0 # Keep z offset 0 relative to ground-touching position
-                
-                offset = mathutils.Vector((x, y, z))
-                
-                # Move model
-                for obj in model_objects:
-                    if obj.parent is None:
-                        # Reset to centered position first (which is original_locations + centering_offset applied earlier)
-                        # Wait, we updated translation in place. So original_locations stores the centered location.
-                        obj.location = original_locations[obj] + offset
-                
-                bpy.context.view_layer.update()
-                
-                # Check collision with cylinder
-                is_colliding = False
-                if cylinder:
-                    for obj in model_objects:
-                        if obj.type == 'MESH':
-                            if check_collision(cylinder, obj):
-                                is_colliding = True
-                                break
-                
-                if not is_colliding:
-                    valid_pos_found = True
-                    print(f"DEBUG: Found valid position at offset {offset}")
-                    break
-            
-            if not valid_pos_found:
-                print("DEBUG: Could not find collision-free position, using last attempt.")
-                # Or fallback to a safer distance
-                fallback_offset = mathutils.Vector((1.0, 0, 0))
-                for obj in model_objects:
-                    if obj.parent is None:
-                        obj.location = original_locations[obj] + fallback_offset
-                bpy.context.view_layer.update()
+    if glb_candidates:
+        num_glbs = random.randint(0, 7)
+        print(f"Loading {num_glbs} additional GLB objects")
+        for _ in range(num_glbs):
+            idx, uid = random.choice(glb_candidates)
+            glb_path = os.path.join(args.glbs_root_path, idx, f"{uid}.glb")
+            new_objs = add_glb_model(glb_path, existing_objects, scale_range=(0.5, 1.0))
+            if new_objs:
+                existing_objects.extend(new_objs)
     
-    # Add LQ model
-    existing_objects = []
-    if cylinder:
-        existing_objects.append(cylinder)
-    if model_objects:
-        existing_objects.extend(model_objects)
-    
-    add_lq_model(args.model_lq_dir, existing_objects)
+    # --- Load LQ Object (1) ---
+    # Load curated LQ list
+    lq_candidates = []
+    if os.path.exists(args.lq_list_path):
+        try:
+            with open(args.lq_list_path, 'r') as f:
+                lq_candidates = json.load(f)
+        except Exception as e:
+            print(f"Error loading LQ list: {e}")
+            
+    if lq_candidates:
+        print("Loading 1 LQ object")
+        new_objs = add_lq_model(args.model_lq_dir, lq_candidates, existing_objects)
+        if new_objs:
+            existing_objects.extend(new_objs)
     
     # Debug: Print all objects final locations
     for obj in bpy.context.scene.objects:

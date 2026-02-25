@@ -8,6 +8,12 @@ python3 scripts/sample_test_obj.py
 cd /Users/yiwenchen/Desktop/ResearchProjects/scripts
 source venv/bin/activate
 
+python render_previews_lvis.py \
+    --csv_path ./test_obj.csv \
+    --group_start 2000 \
+    --group_end 5000 \
+    --output_dir /projects/vig/Datasets/objaverse/hf-objaverse-v1/glb_previews_2000-5000
+
 srun --partition=gpu --nodes=1 --pty --gres=gpu:1 --ntasks=8 --mem=32 --time=8:00:00 /bin/bash
 
 python render_3dscenes_dense.py \
