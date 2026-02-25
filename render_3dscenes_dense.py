@@ -506,8 +506,8 @@ def render_core(args: Options, groups_id = 0):
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
             min_dist_to_origin=3.0,
             max_dist_to_origin=3.0,          # usually keep min=max for consistent radius
-            min_theta_in_degree=15,           # 0 for full sphere, 10/20 for hemisphere
-            max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
+            min_theta_in_degree=20,           # 0 for full sphere, 10/20 for hemisphere
+            max_theta_in_degree=80,         # 90 or 70 for upper hemisphere only
             z_up=True
         )
         eyes_traj = gen_pt_traj_around_origin(
@@ -999,7 +999,7 @@ def render_core(args: Options, groups_id = 0):
 
 if __name__ == '__main__':
     dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
-    random.seed(46)
+    random.seed(47)
 
     args: Options = simple_parsing.parse(Options)
     print(Options)
