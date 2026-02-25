@@ -221,6 +221,10 @@ def render_core(args: Options, groups_id = 0):
                 
                 is_colliding = False
                 for other_obj in existing_objects:
+                    # Skip GroundPlane for collision checks
+                    if other_obj.name == "GroundPlane":
+                        continue
+                        
                     if other_obj.type == 'MESH':
                          for model_obj in model_objects:
                              if model_obj.type == 'MESH':
@@ -232,7 +236,7 @@ def render_core(args: Options, groups_id = 0):
                 
                 if not is_colliding:
                     valid_pos_found = True
-                    # print(f"DEBUG: Found valid position at offset {offset}")
+                    print(f"DEBUG: Found valid position at offset {offset}")
                     break
             
             if not valid_pos_found:
@@ -255,21 +259,30 @@ def render_core(args: Options, groups_id = 0):
         # Pick one random LQ model
         model_id = random.choice(lq_candidates)
         
-        # Try to find the .blend file
-        # Assumption: model_dir/{model_id}/{model_id}.blend
-        filepath = os.path.join(model_dir, model_id, f"{model_id}.blend")
+        # Search for .blend files in the model directory
+        # Structure is typically model_dir/model_id/resolution/model_id_res.blend
+        search_path = os.path.join(model_dir, model_id, "**", "*.blend")
+        files = glob.glob(search_path, recursive=True)
         
-        if not os.path.exists(filepath):
-            # Try recursive search if direct path fails
-            # print(f"Direct path {filepath} not found, searching...")
-            files = glob.glob(os.path.join(model_dir, "**", f"{model_id}.blend"), recursive=True)
-            if files:
-                filepath = files[0]
-            else:
-                print(f"Could not find .blend file for {model_id}")
-                return []
+        if not files:
+            print(f"Could not find .blend file for {model_id} in {os.path.join(model_dir, model_id)}")
+            return []
+            
+        # Prefer 4k, then 1k, then whatever
+        filepath = None
+        for f in files:
+            if "4k" in f:
+                filepath = f
+                break
+        if not filepath:
+            for f in files:
+                if "1k" in f:
+                    filepath = f
+                    break
+        if not filepath:
+            filepath = files[0]
         
-        print(f"Loading LQ model: {model_id}")
+        print(f"Loading LQ model: {model_id} from {filepath}")
         
         # Load objects from .blend file
         with bpy.data.libraries.load(filepath) as (data_from, data_to):
