@@ -348,7 +348,7 @@ def render_core(args: Options, groups_id = 0):
         place_object_randomly(lq_objects, existing_objects, scale_range=(0.8, 1.2))
         return lq_objects
 
-    def add_glb_model(filepath, existing_objects=[], scale_range=(0.5, 1.0)):
+    def add_glb_model(filepath, existing_objects=[], scale_range=(0.7, 1.0)):
         if not os.path.exists(filepath):
             print(f"GLB file not found: {filepath}")
             return []
