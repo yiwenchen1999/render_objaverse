@@ -114,25 +114,50 @@ def render_core(args: Options, groups_id = 0):
             except Exception as e:
                 print(f"Error applying texture to plane: {e}")
 
+    def get_world_bbox(obj):
+        """
+        Calculate the world-space bounding box of an object.
+        Returns (min_corner, max_corner) as Vectors.
+        """
+        bbox_min = mathutils.Vector((math.inf, math.inf, math.inf))
+        bbox_max = mathutils.Vector((-math.inf, -math.inf, -math.inf))
+        
+        # Ensure we use the evaluated object to get correct world transforms
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        eval_obj = obj.evaluated_get(depsgraph)
+        
+        if eval_obj.type == 'MESH':
+            # Transform all 8 corners of the local bbox to world space
+            for corner in eval_obj.bound_box:
+                world_corner = eval_obj.matrix_world @ mathutils.Vector(corner)
+                bbox_min.x = min(bbox_min.x, world_corner.x)
+                bbox_min.y = min(bbox_min.y, world_corner.y)
+                bbox_min.z = min(bbox_min.z, world_corner.z)
+                bbox_max.x = max(bbox_max.x, world_corner.x)
+                bbox_max.y = max(bbox_max.y, world_corner.y)
+                bbox_max.z = max(bbox_max.z, world_corner.z)
+        
+        return bbox_min, bbox_max
+
     def check_collision(obj1, obj2):
         """
-        Check if two objects are colliding using BVH Tree.
+        Check if two objects are colliding using Axis-Aligned Bounding Box (AABB) overlap.
         Returns True if they overlap, False otherwise.
         """
-        # Get dependency graph to ensure we get evaluated mesh (with transforms)
-        depsgraph = bpy.context.evaluated_depsgraph_get()
-        
-        # Create BVH trees
-        # FromObject automatically handles world matrix transforms
         try:
-            bvh1 = mathutils.bvhtree.BVHTree.FromObject(obj1, depsgraph)
-            bvh2 = mathutils.bvhtree.BVHTree.FromObject(obj2, depsgraph)
+            min1, max1 = get_world_bbox(obj1)
+            min2, max2 = get_world_bbox(obj2)
             
-            # Check overlap
-            overlap_pairs = bvh1.overlap(bvh2)
-            return len(overlap_pairs) > 0
+            # Check for overlap in all 3 dimensions
+            # If there is a gap in ANY dimension, there is no collision
+            overlap_x = (min1.x <= max2.x) and (max1.x >= min2.x)
+            overlap_y = (min1.y <= max2.y) and (max1.y >= min2.y)
+            overlap_z = (min1.z <= max2.z) and (max1.z >= min2.z)
+            
+            return overlap_x and overlap_y and overlap_z
+            
         except Exception as e:
-            # print(f"BVH collision check failed: {e}")
+            # print(f"AABB collision check failed: {e}")
             return False
 
     def place_object_randomly(model_objects, existing_objects, scale_range=(0.5, 1.0)):
@@ -229,7 +254,7 @@ def render_core(args: Options, groups_id = 0):
                          for model_obj in model_objects:
                              if model_obj.type == 'MESH':
                                  if check_collision(model_obj, other_obj):
-                                     is_colliding = False
+                                     is_colliding = True
                                      print(f"collision found")
                                      break
                     if is_colliding:
