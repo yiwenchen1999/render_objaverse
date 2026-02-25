@@ -207,7 +207,7 @@ def render_core(args: Options, groups_id = 0):
             original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
             
             for _ in range(100):
-                dist = random.triangular(0.1, 0.8, 0.2)
+                dist = random.triangular(0.5, 2, 0.5)
                 theta = random.uniform(0, 2*math.pi)
                 x = dist * math.cos(theta)
                 y = dist * math.sin(theta)
@@ -439,6 +439,9 @@ def render_core(args: Options, groups_id = 0):
     seed_rgb_pl = None if args.seed is None else args.seed + 2
     seed_multi_pl = None if args.seed is None else args.seed + 3
     seed_area = None if args.seed is None else args.seed + 4
+    # file_path is not defined here, we should use args.three_d_model_path or extract the UID
+    # The original code used file_path which was args.three_d_model_path
+    file_path = args.three_d_model_path
     res_dir = f"{args.output_dir}/{file_path.split('/')[-1].split('.')[0]}"
     os.makedirs(res_dir, exist_ok=True)
     res_dir = os.path.join(res_dir)
