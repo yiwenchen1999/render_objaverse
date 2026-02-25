@@ -324,7 +324,7 @@ def render_core(args: Options, groups_id = 0):
             print("No objects loaded from .blend file")
             return []
 
-        place_object_randomly(lq_objects, existing_objects, scale_range=(0.7, 1.0))
+        place_object_randomly(lq_objects, existing_objects, scale_range=(0.8, 1.2))
         return lq_objects
 
     def add_glb_model(filepath, existing_objects=[], scale_range=(0.5, 1.0)):
@@ -999,7 +999,7 @@ def render_core(args: Options, groups_id = 0):
 
 if __name__ == '__main__':
     dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
-    random.seed(44)
+    random.seed(45)
 
     args: Options = simple_parsing.parse(Options)
     print(Options)
