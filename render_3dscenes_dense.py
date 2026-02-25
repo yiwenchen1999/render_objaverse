@@ -231,6 +231,7 @@ def render_core(args: Options, groups_id = 0):
             # Apply random rotation to the root object(s)
             random_angle = random.uniform(0, 2 * math.pi)
             rot_matrix = mathutils.Matrix.Rotation(random_angle, 4, 'Z')
+            print(f"DEBUG: Random rotation angle: {random_angle}")
             
             # We need to rotate around the object's current center (which is now at 0,0,0 in XY)
             # Since we centered it, applying rotation to the world matrix should work fine if pivot is origin
@@ -1015,7 +1016,7 @@ def render_core(args: Options, groups_id = 0):
 
 if __name__ == '__main__':
     dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
-    random.seed(47)
+    random.seed(48)
 
     args: Options = simple_parsing.parse(Options)
     print(Options)
