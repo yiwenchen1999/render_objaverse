@@ -207,7 +207,7 @@ def render_core(args: Options, groups_id = 0):
             original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
             
             for _ in range(100):
-                dist = random.triangular(0, 10, 1)
+                dist = random.triangular(0, 5, 1)
                 theta = random.uniform(0, 2*math.pi)
                 x = dist * math.cos(theta)
                 y = dist * math.sin(theta)
@@ -479,7 +479,7 @@ def render_core(args: Options, groups_id = 0):
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
             min_dist_to_origin=2.0,
-            max_dist_to_origin=4.0,          # usually keep min=max for consistent radius
+            max_dist_to_origin=2.0,          # usually keep min=max for consistent radius
             min_theta_in_degree=15,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
             z_up=True
