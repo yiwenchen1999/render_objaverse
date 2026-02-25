@@ -227,6 +227,22 @@ def render_core(args: Options, groups_id = 0):
                     obj.matrix_world.translation += ground_offset
             bpy.context.view_layer.update()
             
+            # 2.5 Random Rotation around Z-axis
+            # Apply random rotation to the root object(s)
+            random_angle = random.uniform(0, 2 * math.pi)
+            rot_matrix = mathutils.Matrix.Rotation(random_angle, 4, 'Z')
+            
+            # We need to rotate around the object's current center (which is now at 0,0,0 in XY)
+            # Since we centered it, applying rotation to the world matrix should work fine if pivot is origin
+            # or just rotate the object itself.
+            for obj in model_objects:
+                if obj.parent is None:
+                    # Apply rotation. Since we are at origin (mostly), this rotates around Z axis at origin.
+                    # If the object was moved to ground, its Z is not 0, but X,Y are 0.
+                    # So rotation around Z axis (0,0,1) passing through origin is correct.
+                    obj.matrix_world = rot_matrix @ obj.matrix_world
+            bpy.context.view_layer.update()
+            
             # 3. Position avoiding collision
             valid_pos_found = False
             original_locations = {obj: obj.location.copy() for obj in model_objects if obj.parent is None}
