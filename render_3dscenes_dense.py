@@ -1068,8 +1068,16 @@ if __name__ == '__main__':
         for j in range(args.num_view_groups):
             # if found a done.txt file, skip this model
             print('rendering group:', j)
-            # if os.path.exists(os.path.join(args.output_dir, uid, 'done.txt')):
-            #     continue
+            target_dir = os.path.join(args.output_dir, uid)
+            if os.path.exists(os.path.join(target_dir, 'done.txt')):
+                print(f"Skipping {uid} (done.txt found)")
+                continue
+            
+            # If not done, but directory exists, remove it to start fresh
+            if os.path.exists(target_dir):
+                print(f"Removing incomplete directory: {target_dir}")
+                shutil.rmtree(target_dir)
+
             render_core(args, j)
             print('render progress:', i, 'of range', args.group_start, '~', args.group_end)
         
