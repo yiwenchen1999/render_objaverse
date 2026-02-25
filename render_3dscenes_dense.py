@@ -38,7 +38,7 @@ class Options:
     group_end: int = 10  # Group of models to render
     save_intrinsics: bool = True  # Whether to save intrinsics for each view
     csv_path: str = "test_obj.csv"  # Path to CSV file containing model indices and UIDs
-    rendered_dir_name: str = "render_scene_test"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
+    rendered_dir_name: str = "rendered_scenes"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
     texture_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_textures" # Path to texture files
     model_lq_dir: str = "/projects/vig/Datasets/Polyhaven/polyhaven_models" # Path to LQ models
     
@@ -390,8 +390,8 @@ def render_core(args: Options, groups_id = 0):
 
     def configure_blender():
         # Set the render resolution
-        bpy.context.scene.render.resolution_x = 256
-        bpy.context.scene.render.resolution_y = 256
+        bpy.context.scene.render.resolution_x = 512
+        bpy.context.scene.render.resolution_y = 512
         bpy.context.scene.render.engine = 'CYCLES'
         bpy.context.preferences.addons["cycles"].preferences.get_devices()
 
