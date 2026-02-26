@@ -36,7 +36,7 @@ echo "=== GPU-monitored test run: group $GROUP_START-$GROUP_END, cycles_tile_siz
 echo "Log: $GPU_LOG"
 echo ""
 
-GPU_LOG_PATH="$GPU_LOG" bash "$SCRIPT_DIR/run_with_gpu_monitor.sh" -- \
+GPU_LOG_PATH="$GPU_LOG" bash "$SCRIPT_DIR/SonyAIClusterUtil/run_with_gpu_monitor.sh" -- \
   "$BLENDER_BIN" -b -P render_3dmodels_dense_polyhaven.py -- \
   --group_start $GROUP_START \
   --group_end $GROUP_END \
