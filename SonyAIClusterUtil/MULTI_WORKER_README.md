@@ -24,11 +24,22 @@ bash SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_distributed_test.sh
 watch -n 1 nvidia-smi
 ```
 
-### 2. 批量提交（group 0-60，4 workers）
+### 2. 批量提交（240 模型，4 组 x 4 workers）
+
+**一键提交所有 4 个任务（0-60, 60-120, 120-180, 180-240）：**
 
 ```bash
 cd /music-shared-disk/group/ct/yiwen/codes/render_objaverse
+bash SonyAIClusterUtil/submit_all_distributed_polyhaven.sh
+```
+
+**或单独提交：**
+
+```bash
 sbatch SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_distributed_0_60.sh
+sbatch SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_distributed_60_120.sh
+sbatch SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_distributed_120_180.sh
+sbatch SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_distributed_180_240.sh
 ```
 
 ### 3. 手动调用
