@@ -49,14 +49,14 @@ run_on_node() {
   "$BLENDER_BIN" -b -P render_3dmodels_dense_polyhaven.py -- \
     --group_start 0 \
     --group_end 1 \
-    --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven_test \
+    --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven \
     --model_lq_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models \
     --env_map_dir_path /music-shared-disk/group/ct/yiwen/data/objaverse/hdris \
     --white_env_map_dir_path /music-shared-disk/group/ct/yiwen/data/objaverse/hdris \
     --model_list_path "$MODEL_LIST_PATH" \
     --num_views 4 \
     --num_test_views 4 \
-    --rendered_dir_name /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven_test
+    --rendered_dir_name /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven
 }
 
 if [[ "${1:-}" == "run_on_node" ]]; then
