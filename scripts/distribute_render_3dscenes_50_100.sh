@@ -30,5 +30,4 @@ python scripts/distribute_render_3dscenes.py \
   --glb_list_path test_obj_curated.csv \
   --glbs_root_path /projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/ \
   --proj_root /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
-
 echo "Done."
