@@ -709,7 +709,7 @@ if __name__ == '__main__':
                 break
             model_ids_to_render.append(model_ids[i])
 
-    for model_id in model_ids_to_render:
+    for idx, model_id in enumerate(model_ids_to_render):
         
         # args.three_d_model_path = model_path # Not needed
         
@@ -744,7 +744,7 @@ if __name__ == '__main__':
                 continue
             try:
                 render_core(args, model_id, j)
-                print('render progress:', i, 'of range', args.group_start, '~', args.group_end)
+                print(f'render progress: {idx+1}/{len(model_ids_to_render)} (model {model_id})', flush=True)
             except Exception as e:
                 print(f'[SKIP] Model {model_id} failed: {e}', flush=True)
                 traceback.print_exc()

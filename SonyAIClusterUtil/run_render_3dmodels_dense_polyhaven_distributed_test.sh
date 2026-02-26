@@ -17,8 +17,8 @@ mkdir -p slurm_logs
 python3 SonyAIClusterUtil/distribute_render_polyhaven.py \
   --num_gpus 1 \
   --workers_per_gpu 4 \
-  --group_start 0 \
-  --group_end 4 \
+  --group_start 20 \
+  --group_end 36 \
   --model_list_path assets/object_ids/polyhaven_models_train.json \
   --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven \
   --model_lq_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models \
