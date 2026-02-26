@@ -10,7 +10,7 @@
 #SBATCH --error=myjob.render_3dscenes_950_1000.err
 
 python render_3dscenes_dense.py \
-    --group_start 950 --group_end 1000 \
+    --group_start 1950 --group_end 2000 \
     --num_white_envs 1 --num_env_lights 3 \
     --model_lq_dir /projects/vig/Datasets/Polyhaven/polyhaven_models \
     --output_dir ./output_scenes_dense
