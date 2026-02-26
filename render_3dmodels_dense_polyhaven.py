@@ -624,7 +624,9 @@ def render_core(args: Options, model_id: str, groups_id = 0):
 
 
 if __name__ == '__main__':
-    # dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
+    # When run via Blender (-b -P script.py -- ...), only args after -- are for this script
+    if '--' in sys.argv:
+        sys.argv = [sys.argv[0]] + sys.argv[sys.argv.index('--') + 1:]
 
     args: Options = simple_parsing.parse(Options)
     print(Options)

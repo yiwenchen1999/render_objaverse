@@ -24,9 +24,9 @@ mkdir -p slurm_logs
 export SDL_AUDIODRIVER=dummy
 
 PROJ="${PROJ:-/music-shared-disk/group/ct/yiwen/codes/render_objaverse}"
-BLENDER_BIN="${BLENDER_BIN:-${PROJ}/blender-4.2-linux-x64/blender}"
+BLENDER_BIN="${BLENDER_BIN:-${PROJ}/neuralGaufferRendering/blender-3.2.2-linux-x64/blender}"
 if [[ ! -x "$BLENDER_BIN" ]]; then
-  BLENDER_BIN="${PROJ}/neuralGaufferRendering/blender-3.2.2-linux-x64/blender"
+  BLENDER_BIN="${PROJ}/neuralGaufferRendering/blender-4.2-linux-x64/blender"
 fi
 if [[ ! -x "$BLENDER_BIN" ]]; then
   echo "Error: Blender not found. Set BLENDER_BIN or install Blender in project."

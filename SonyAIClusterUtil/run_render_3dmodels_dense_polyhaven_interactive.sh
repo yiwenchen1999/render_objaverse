@@ -23,9 +23,9 @@
 set -euo pipefail
 
 PROJ="${PROJ:-/music-shared-disk/group/ct/yiwen/codes/render_objaverse}"
-BLENDER_BIN="${BLENDER_BIN:-${PROJ}/blender-4.2-linux-x64/blender}"
+BLENDER_BIN="${BLENDER_BIN:-${PROJ}/neuralGaufferRendering/blender-3.2.2-linux-x64/blender}"
 if [[ ! -x "$BLENDER_BIN" ]]; then
-  BLENDER_BIN="${PROJ}/neuralGaufferRendering/blender-3.2.2-linux-x64/blender"
+  BLENDER_BIN="${PROJ}/neuralGaufferRendering/blender-4.2-linux-x64/blender"
 fi
 if [[ ! -x "$BLENDER_BIN" ]]; then
   echo "Error: Blender not found. Set BLENDER_BIN or install Blender in project."
@@ -40,8 +40,8 @@ OUTPUT_DIR="${OUTPUT_DIR:-/scratch2/$USER/rendered_dense_polyhaven}"
 MODEL_LQ_DIR="${MODEL_LQ_DIR:-/music-shared-disk/group/ct/yiwen/data/Polyhaven/polyhaven_models}"
 ENV_MAP_DIR="${ENV_MAP_DIR:-/music-shared-disk/group/ct/yiwen/data/envmaps/hdris}"
 MODEL_LIST_PATH="${MODEL_LIST_PATH:-assets/object_ids/polyhaven_models_train.json}"
-NUM_VIEWS="${NUM_VIEWS:-200}"
-NUM_TEST_VIEWS="${NUM_TEST_VIEWS:-100}"
+NUM_VIEWS="${NUM_VIEWS:-4}"
+NUM_TEST_VIEWS="${NUM_TEST_VIEWS:-4}"
 
 # Commands to run on the compute node (for sbash workflow)
 run_on_node() {
@@ -56,7 +56,7 @@ run_on_node() {
     --model_list_path "$MODEL_LIST_PATH" \
     --num_views "$NUM_VIEWS" \
     --num_test_views "$NUM_TEST_VIEWS" \
-    --rendered_dir_name rendered_dense_polyhaven
+    --rendered_dir_name /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven_test
 }
 
 if [[ "${1:-}" == "run_on_node" ]]; then
