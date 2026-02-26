@@ -41,6 +41,7 @@ def worker(
             f"--group_start {scene_idx} --group_end {scene_idx + 1} "
             f"--num_white_envs {args.num_white_envs} "
             f"--num_env_lights {args.num_env_lights} "
+            f"--num_white_pls {args.num_white_pls} --num_rgb_pls {args.num_rgb_pls} --num_multi_pls {args.num_multi_pls} "
             f"--model_lq_dir {args.model_lq_dir} "
             f"--output_dir {args.output_dir} "
             f"--texture_dir {args.texture_dir} "
