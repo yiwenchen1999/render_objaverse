@@ -6,6 +6,7 @@ import random
 from typing import Optional
 import sys
 import glob
+import traceback
 
 # Ensure project root is on path so bpy_helper is found when run via Blender -b -P
 _script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -688,6 +689,13 @@ if __name__ == '__main__':
             print('rendering group:', j)
             if os.path.exists(os.path.join(args.output_dir, model_id, 'done.txt')):
                 continue
-            render_core(args, model_id, j)
-            print('render progress:', i, 'of range', args.group_start, '~', args.group_end)
+            try:
+                render_core(args, model_id, j)
+                print('render progress:', i, 'of range', args.group_start, '~', args.group_end)
+            except Exception as e:
+                print(f'[SKIP] Model {model_id} failed: {e}', flush=True)
+                traceback.print_exc()
+                if model_id not in error_list:
+                    error_list.append(model_id)
+                continue
         

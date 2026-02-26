@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=ct
+#SBATCH --partition=sharedp
 #SBATCH --account=ct
 #SBATCH --requeue
 #SBATCH --job-name=bpy_ph_0_60
@@ -50,5 +50,5 @@ echo "Batch: render_3dmodels_dense_polyhaven group $GROUP_START-$GROUP_END (shar
   --num_test_views $NUM_TEST_VIEWS \
   --rendered_dir_name "$RENDERED_DIR_NAME" \
   --num_white_pls 3 --num_rgb_pls 1 --num_multi_pls 0 \
-  --num_env_lights 0 --num_white_envs 1 --num_area_lights 0
+  --num_env_lights 4 --num_white_envs 1 --num_area_lights 0
 echo "Done."

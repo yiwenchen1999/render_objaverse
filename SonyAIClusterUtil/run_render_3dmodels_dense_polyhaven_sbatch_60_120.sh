@@ -34,7 +34,7 @@ ENV_MAP_DIR="/music-shared-disk/group/ct/yiwen/data/objaverse/hdris"
 MODEL_LIST_PATH="${MODEL_LIST_PATH:-assets/object_ids/polyhaven_models_train.json}"
 NUM_VIEWS=30
 NUM_TEST_VIEWS=100
-RENDERED_DIR_NAME="/music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven"
+RENDERED_DIR_NAME="/music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven_test"
 
 cd "$PROJ"
 echo "Batch: render_3dmodels_dense_polyhaven group $GROUP_START-$GROUP_END (sharedp)"
@@ -48,7 +48,7 @@ echo "Batch: render_3dmodels_dense_polyhaven group $GROUP_START-$GROUP_END (shar
   --model_list_path "$MODEL_LIST_PATH" \
   --num_views $NUM_VIEWS \
   --num_test_views $NUM_TEST_VIEWS \
-  --rendered_dir_name "$RENDERED_DIR_NAME" \
+  --rendered_dir_name $RENDERED_DIR_NAME \
   --num_white_pls 3 --num_rgb_pls 1 --num_multi_pls 0 \
-  --num_env_lights 0 --num_white_envs 1 --num_area_lights 0
+  --num_env_lights 4 --num_white_envs 1 --num_area_lights 0
 echo "Done."
