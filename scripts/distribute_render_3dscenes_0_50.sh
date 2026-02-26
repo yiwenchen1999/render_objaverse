@@ -15,16 +15,15 @@
 # =============================================================================
 
 cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
-source /projects/vig/yiwenc/all_env/blender-env/bin/activate
 
 python scripts/distribute_render_3dscenes.py \
   --num_gpus 1 \
   --workers_per_gpu 4 \
   --group_start 0 \
-  --group_end 4 \
+  --group_end 50 \
   --num_white_envs 1 \
-  --num_env_lights 1 \
-  --num_white_pls 1 --num_rgb_pls 0 --num_multi_pls 0 \
+  --num_env_lights 3 \
+  --num_white_pls 0 --num_rgb_pls 0 --num_multi_pls 0 \
   --model_lq_dir /projects/vig/Datasets/Polyhaven/polyhaven_models \
   --output_dir ./output_scenes_dense \
   --texture_dir /projects/vig/Datasets/Polyhaven/polyhaven_textures \
