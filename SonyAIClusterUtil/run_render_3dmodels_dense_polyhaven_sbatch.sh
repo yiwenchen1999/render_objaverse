@@ -1,26 +1,26 @@
 #!/bin/bash
-#SBATCH --partition=ct,sharedp
+#SBATCH --partition=ct
 #SBATCH --account=ct
+#SBATCH --job-name=bpy_polyhaven
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=bpy_polyhaven
-#SBATCH --output=slurm_logs/render_polyhaven.%x.%j.out
-#SBATCH --error=slurm_logs/render_polyhaven.%x.%j.err
-#SBATCH --time=23:00:00
-#SBATCH --requeue
+#SBATCH --output=slurm_logs/%x.%j.out
+#SBATCH --error=slurm_logs/%x.%j.err
 # =============================================================================
 # Sony cluster: batch run for render_3dmodels_dense_polyhaven.py
+# Reference: shortcuts.sh, sonyai_crusoe_day1_quickstart.md (sbatch format)
+#
 # Submit: cd /music-shared-disk/group/ct/yiwen/codes/render_objaverse && sbatch SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_sbatch.sh
 #
-# Override range and paths via env before sbatch, e.g.:
-#   export GROUP_START=0 GROUP_END=50 OUTPUT_DIR=/scratch2/$USER/rendered_dense_polyhaven
-#   sbatch SonyAIClusterUtil/run_render_3dmodels_dense_polyhaven_sbatch.sh
-#
+# Override before sbatch: export GROUP_START=0 GROUP_END=50 OUTPUT_DIR=/scratch2/$USER/out
+# For sharedp (preemptible): add --partition=ct,sharedp and #SBATCH --requeue
 # Prereq: Blender in PROJ; Blender Python has simple_parsing, imageio.
 # =============================================================================
 
 set -euo pipefail
+
+mkdir -p slurm_logs
 
 PROJ="${PROJ:-/music-shared-disk/group/ct/yiwen/codes/render_objaverse}"
 BLENDER_BIN="${BLENDER_BIN:-${PROJ}/blender-4.2-linux-x64/blender}"
@@ -41,16 +41,13 @@ MODEL_LIST_PATH="${MODEL_LIST_PATH:-assets/object_ids/polyhaven_models_train.jso
 NUM_VIEWS="${NUM_VIEWS:-200}"
 NUM_TEST_VIEWS="${NUM_TEST_VIEWS:-100}"
 
-mkdir -p slurm_logs
 cd "$PROJ"
 
 echo "=============================================="
 echo "Batch: render_3dmodels_dense_polyhaven"
 echo "=============================================="
-echo "PROJ=$PROJ"
-echo "BLENDER_BIN=$BLENDER_BIN"
-echo "GROUP_START=$GROUP_START GROUP_END=$GROUP_END"
-echo "OUTPUT_DIR=$OUTPUT_DIR"
+echo "PROJ=$PROJ BLENDER_BIN=$BLENDER_BIN"
+echo "GROUP_START=$GROUP_START GROUP_END=$GROUP_END OUTPUT_DIR=$OUTPUT_DIR"
 echo "=============================================="
 
 "$BLENDER_BIN" -b -P render_3dmodels_dense_polyhaven.py -- \
