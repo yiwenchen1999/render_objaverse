@@ -49,19 +49,20 @@ class Options:
 
 def render_core(args: Options, model_id: str, groups_id = 0):
     import bpy
+    import mathutils
 
     from bpy_helper.camera import create_camera, look_at_to_c2w
     from bpy_helper.io import render_depth_map, mat2list, array2list, render_normal_map, render_albedo_map, transform_normals_to_camera_space
     from bpy_helper.light import create_point_light, set_env_light, create_area_light
     from bpy_helper.material import create_white_diffuse_material, create_specular_ggx_material, clear_emission_and_alpha_nodes
     from bpy_helper.random import gen_random_pts_around_origin, gen_pt_traj_around_origin
-    from bpy_helper.scene import normalize_scene, reset_scene
+    from bpy_helper.scene import reset_scene
     from bpy_helper.utils import stdout_redirected
 
     def import_polyhaven_model(model_dir, model_id):
         if not os.path.exists(model_dir):
             print(f"Model dir {model_dir} does not exist.")
-            return False
+            return None
 
         # Search for .blend files in the model directory
         # Structure is typically model_dir/model_id/resolution/model_id_res.blend
@@ -71,8 +72,8 @@ def render_core(args: Options, model_id: str, groups_id = 0):
         
         if not files:
             print(f"Could not find .blend file for {model_id} in {os.path.join(model_dir, model_id)}")
-            return False
-            
+            return None
+
         # Prefer 4k, then 1k, then whatever
         filepath = None
         for f in files:
@@ -101,9 +102,9 @@ def render_core(args: Options, model_id: str, groups_id = 0):
                 
         if not loaded_objects:
             print("No objects loaded from .blend file")
-            return False
-            
-        return True
+            return None
+
+        return loaded_objects
 
     def render_rgb_and_hint(output_path,idx = 0):
         # Get the last added object (assuming the new object is the most recently added one)
@@ -148,26 +149,61 @@ def render_core(args: Options, model_id: str, groups_id = 0):
     # with stdout_redirected():
     #     import_3d_model(file_path)
     
-    success = import_polyhaven_model(args.model_lq_dir, model_id)
-    if not success:
+    model_objects = import_polyhaven_model(args.model_lq_dir, model_id)
+    if not model_objects:
         return
 
-    # Rename the imported object(s) to "shape" if possible, or just let normalize_scene handle root objects
-    # But render_rgb_and_hint expects an object named "shape" for some reason?
-    # Actually render_rgb_and_hint gets the last object or active object.
-    # Let's check render_rgb_and_hint implementation.
-    # It gets context.scene.objects[-1] and renames it to "shape".
-    # But import_polyhaven_model might import multiple objects.
-    # We should probably join them or just let them be.
-    # The original script's render_rgb_and_hint:
-    # new_object = bpy.context.scene.objects[-1]
-    # new_object.name = "shape"
-    # This implies single object assumption.
-    # Polyhaven models might be multiple objects.
-    # Let's try to join them if they are meshes, or just pick one as main.
-    # normalize_scene scales all root objects.
-    
-    scale, offset = normalize_scene(use_bounding_sphere=True)
+    # Scale and center: copied from render_3dscenes_dense.py place_object_randomly (bbox logic only)
+    if bpy.context.object and bpy.context.object.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    bbox_min = (math.inf,) * 3
+    bbox_max = (-math.inf,) * 3
+    found_mesh = False
+    for obj in model_objects:
+        if obj.type == 'MESH':
+            found_mesh = True
+            for coord in obj.bound_box:
+                coord = mathutils.Vector(coord)
+                coord = obj.matrix_world @ coord
+                bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+
+    if found_mesh:
+        max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
+        target_scale = 1
+        scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
+
+        for obj in model_objects:
+            if obj.parent is None:
+                obj.scale = obj.scale * scale_factor
+        bpy.context.view_layer.update()
+
+        # Center
+        bbox_min = (math.inf,) * 3
+        bbox_max = (-math.inf,) * 3
+        for obj in model_objects:
+            if obj.type == 'MESH':
+                for coord in obj.bound_box:
+                    coord = mathutils.Vector(coord)
+                    coord = obj.matrix_world @ coord
+                    bbox_min = tuple(min(x, y) for x, y in zip(bbox_min, coord))
+                    bbox_max = tuple(max(x, y) for x, y in zip(bbox_max, coord))
+
+        current_center = (mathutils.Vector(bbox_min) + mathutils.Vector(bbox_max)) / 2
+        centering_offset = -current_center
+
+        for obj in model_objects:
+            if obj.parent is None:
+                obj.matrix_world.translation += centering_offset
+        bpy.context.view_layer.update()
+
+        offset = centering_offset
+        scale = scale_factor
+    else:
+        scale, offset = 1.0, mathutils.Vector((0, 0, 0))
+
+    bpy.ops.object.select_all(action="DESELECT")
     clear_emission_and_alpha_nodes()
 
     # Configure blender

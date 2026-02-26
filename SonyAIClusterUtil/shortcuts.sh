@@ -9,8 +9,8 @@ cd /music-shared-disk/group/ct/yiwen/codes/FLUX_finetune
 cd /music-shared-disk/group/ct/yiwen/data/objaverse
 rsync -avh --partial --inplace --progress \
   -e "ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes" \
-  chen.yiwe@xfer.discovery.neu.edu:/projects/vig/Datasets/objaverse/envmaps/hdris/ \
-  hdris/
+  chen.yiwe@xfer.discovery.neu.edu:/projects/vig/Datasets/Polyhaven/polyhaven_models \
+  polyhaven_models/
 
 # env creation:
 sbash --partition=ct --account=ct --nodes=1 --gpus=1
