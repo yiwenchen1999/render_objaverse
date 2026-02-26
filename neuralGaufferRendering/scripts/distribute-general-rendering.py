@@ -27,6 +27,9 @@ class Args:
     input_models_path: str
     """Path to a json file containing a list of 3D object files"""
 
+    input_base_path: Optional[str] = None
+    """Base path for Objaverse models. If None, uses legacy hardcoded path or OBJAVERSE_BASE env var."""
+
     upload_to_s3: bool = False
     """Whether to upload the rendered images to S3"""
 
@@ -115,9 +118,12 @@ if __name__ == "__main__":
         model_keys = model_keys
         random.shuffle(model_keys)
 
+        # Resolve base path: --input_base_path > OBJAVERSE_BASE env > legacy default
+        base_path = args.input_base_path or os.environ.get(
+            "OBJAVERSE_BASE", "/share/phoenix/nfs05/S8/hj453/Objaverse/hf-objaverse-v1"
+        )
         for item in model_keys:
-            queue.put(os.path.join('/share/phoenix/nfs05/S8/hj453/Objaverse/hf-objaverse-v1', model_paths[item]))
-            # queue.put(os.path.join('/share/phoenix/nfs05/S8/hj453/Objaverse/hf-objaverse-v1', model_paths[item]))
+            queue.put(os.path.join(base_path, model_paths[item]))
 
         # update the wandb count
         if args.log_to_wandb:
