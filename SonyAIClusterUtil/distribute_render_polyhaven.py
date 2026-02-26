@@ -10,65 +10,21 @@ Usage:
     --group_start 0 --group_end 60
 """
 
+import argparse
 import json
 import multiprocessing
 import os
 import signal
 import subprocess
 import sys
-from dataclasses import dataclass
 from typing import Optional
-
-import tyro
-
-
-@dataclass
-class Args:
-    workers_per_gpu: int = 2
-    """Number of Blender workers per GPU (2-4 recommended)"""
-
-    num_gpus: int = 1
-    """Number of GPUs to use"""
-
-    model_list_path: str = "assets/object_ids/polyhaven_models_train.json"
-    """Path to Polyhaven model list JSON"""
-
-    group_start: int = 0
-    """Start index in model list"""
-
-    group_end: int = 10
-    """End index in model list (exclusive)"""
-
-    output_dir: str = "/music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven"
-    """Output directory"""
-
-    model_lq_dir: str = "/music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models"
-    """Path to Polyhaven models"""
-
-    env_map_dir: str = "/music-shared-disk/group/ct/yiwen/data/objaverse/hdris"
-    """Path to HDRI environment maps"""
-
-    num_views: int = 30
-    """Number of random views per model"""
-
-    num_test_views: int = 100
-    """Number of trajectory views per model"""
-
-    cycles_tile_size: int = 512
-    """Cycles tile size (max 512 for 512x512 renders)"""
-
-    blender_bin: Optional[str] = None
-    """Path to Blender binary (auto-detect if None)"""
-
-    proj_root: str = "/music-shared-disk/group/ct/yiwen/codes/render_objaverse"
-    """Project root directory"""
 
 
 def worker(
     queue: multiprocessing.JoinableQueue,
     count: multiprocessing.Value,
     gpu: int,
-    args: Args,
+    args: argparse.Namespace,
 ) -> None:
     """Worker process: render models from queue on specified GPU."""
     blender_bin = args.blender_bin
@@ -125,7 +81,21 @@ def worker(
 
 
 def main():
-    args = tyro.cli(Args)
+    parser = argparse.ArgumentParser(description="Multi-worker dispatcher for Polyhaven rendering")
+    parser.add_argument("--workers_per_gpu", type=int, default=2, help="Number of workers per GPU")
+    parser.add_argument("--num_gpus", type=int, default=1, help="Number of GPUs to use")
+    parser.add_argument("--model_list_path", type=str, default="assets/object_ids/polyhaven_models_train.json")
+    parser.add_argument("--group_start", type=int, default=0, help="Start index in model list")
+    parser.add_argument("--group_end", type=int, default=10, help="End index in model list")
+    parser.add_argument("--output_dir", type=str, default="/music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven")
+    parser.add_argument("--model_lq_dir", type=str, default="/music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models")
+    parser.add_argument("--env_map_dir", type=str, default="/music-shared-disk/group/ct/yiwen/data/objaverse/hdris")
+    parser.add_argument("--num_views", type=int, default=30)
+    parser.add_argument("--num_test_views", type=int, default=100)
+    parser.add_argument("--cycles_tile_size", type=int, default=512)
+    parser.add_argument("--blender_bin", type=str, default=None)
+    parser.add_argument("--proj_root", type=str, default="/music-shared-disk/group/ct/yiwen/codes/render_objaverse")
+    args = parser.parse_args()
 
     # Load model list
     with open(os.path.join(args.proj_root, args.model_list_path), "r") as f:

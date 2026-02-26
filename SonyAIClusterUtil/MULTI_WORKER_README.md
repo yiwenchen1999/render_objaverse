@@ -53,12 +53,7 @@ python3 SonyAIClusterUtil/distribute_render_polyhaven.py \
 
 ## 依赖
 
-需要安装 `tyro`：
-
-```bash
-# 在登录节点或 venv 中
-pip install tyro
-```
+无额外依赖，使用 Python 标准库。
 
 ## 注意事项
 
