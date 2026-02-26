@@ -64,8 +64,8 @@ def worker(
             f"--num_test_views {args.num_test_views} "
             f"--rendered_dir_name {args.output_dir} "
             f"--cycles_tile_size {args.cycles_tile_size} "
-            f"--num_white_pls 1 --num_rgb_pls 0 --num_multi_pls 0 "
-            f"--num_env_lights 0 --num_white_envs 1 --num_area_lights 0"
+            f"--num_white_pls 3 --num_rgb_pls 1 --num_multi_pls 0 "
+            f"--num_env_lights 3 --num_white_envs 1 --num_area_lights 0"
         )
 
         try:
