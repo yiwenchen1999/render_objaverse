@@ -45,6 +45,7 @@ class Options:
     rendered_dir_name: str = "/music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven"  # Name of the rendered output directory
     model_lq_dir: str = "/music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models" # Path to Polyhaven models
     model_list_path: str = "assets/object_ids/polyhaven_models_train.json" # Path to model list JSON
+    cycles_tile_size: int = 2048  # Cycles tile size for GPU (H100 can use 2048 or 4096)
 
 
 def render_core(args: Options, model_id: str, groups_id = 0):
@@ -136,6 +137,10 @@ def render_core(args: Options, model_id: str, groups_id = 0):
 
         bpy.context.scene.cycles.device = 'GPU'
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
+        # Large tile for H100 (default 2048; try 4096 for max GPU utilization)
+        tile = getattr(args, 'cycles_tile_size', 2048)
+        bpy.context.scene.cycles.tile_x = tile
+        bpy.context.scene.cycles.tile_y = tile
 
         # Enable the alpha channel for GT mask
         bpy.context.scene.render.film_transparent = True
@@ -171,7 +176,7 @@ def render_core(args: Options, model_id: str, groups_id = 0):
 
     if found_mesh:
         max_dim = max(bbox_max[i] - bbox_min[i] for i in range(3))
-        target_scale = 1
+        target_scale = 0.8
         scale_factor = target_scale / max_dim if max_dim > 0 else 1.0
 
         for obj in model_objects:

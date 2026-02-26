@@ -392,6 +392,9 @@ def render_core(args: Options, groups_id = 0):
         # Set the render resolution
         bpy.context.scene.render.resolution_x = 512
         bpy.context.scene.render.resolution_y = 512
+        # 在 configure_blender() 中，cycles.device = 'GPU' 之后添加：
+        bpy.context.scene.cycles.tile_x = 256
+        bpy.context.scene.cycles.tile_y = 256
         bpy.context.scene.render.engine = 'CYCLES'
         bpy.context.preferences.addons["cycles"].preferences.get_devices()
 

@@ -39,7 +39,7 @@ RENDERED_DIR_NAME="/music-shared-disk/group/ct/yiwen/data/objaverse/rendered_den
 cd "$PROJ"
 echo "Batch: render_3dmodels_dense_polyhaven group $GROUP_START-$GROUP_END (sharedp)"
 "$BLENDER_BIN" -b -P render_3dmodels_dense_polyhaven.py -- \
-  --group_start $GROUP_START \
+  --group_start 4 \
   --group_end $GROUP_END \
   --output_dir "$OUTPUT_DIR" \
   --model_lq_dir "$MODEL_LQ_DIR" \
@@ -50,5 +50,6 @@ echo "Batch: render_3dmodels_dense_polyhaven group $GROUP_START-$GROUP_END (shar
   --num_test_views $NUM_TEST_VIEWS \
   --rendered_dir_name "$RENDERED_DIR_NAME" \
   --num_white_pls 3 --num_rgb_pls 1 --num_multi_pls 0 \
-  --num_env_lights 4 --num_white_envs 1 --num_area_lights 0
+  --num_env_lights 4 --num_white_envs 1 --num_area_lights 0 \
+  --cycles_tile_size 4096
 echo "Done."
