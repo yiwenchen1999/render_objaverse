@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=sharedp
+#SBATCH --partition=ct
 #SBATCH --account=ct
 #SBATCH --requeue
 #SBATCH --job-name=bpy_ph_0_60
