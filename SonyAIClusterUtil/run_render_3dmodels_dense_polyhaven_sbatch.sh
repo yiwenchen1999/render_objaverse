@@ -15,12 +15,13 @@
 #
 # Override before sbatch: export GROUP_START=0 GROUP_END=50 OUTPUT_DIR=/scratch2/$USER/out
 # For sharedp (preemptible): add --partition=ct,sharedp and #SBATCH --requeue
-# Prereq: Blender in PROJ; Blender Python has simple_parsing, imageio.
+# Prereq: Run once: bash SonyAIClusterUtil/install_blender_python_deps.sh
 # =============================================================================
 
 set -euo pipefail
 
 mkdir -p slurm_logs
+export SDL_AUDIODRIVER=dummy
 
 PROJ="${PROJ:-/music-shared-disk/group/ct/yiwen/codes/render_objaverse}"
 BLENDER_BIN="${BLENDER_BIN:-${PROJ}/blender-4.2-linux-x64/blender}"

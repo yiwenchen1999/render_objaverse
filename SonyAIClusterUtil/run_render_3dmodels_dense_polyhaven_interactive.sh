@@ -16,7 +16,8 @@
 #
 # Override via environment: PROJ BLENDER_BIN GROUP_START GROUP_END OUTPUT_DIR
 #   MODEL_LQ_DIR ENV_MAP_DIR MODEL_LIST_PATH NUM_VIEWS NUM_TEST_VIEWS
-# Prereq: Blender in PROJ; Blender Python has simple_parsing, imageio.
+# Prereq: Run once to install deps into Blender's Python:
+#   bash SonyAIClusterUtil/install_blender_python_deps.sh
 # =============================================================================
 
 set -euo pipefail
@@ -60,6 +61,8 @@ run_on_node() {
 
 if [[ "${1:-}" == "run_on_node" ]]; then
   echo "Running on compute node: PROJ=$PROJ GROUP_START=$GROUP_START GROUP_END=$GROUP_END OUTPUT_DIR=$OUTPUT_DIR"
+  # Silence ALSA/audio warnings on headless node
+  export SDL_AUDIODRIVER=dummy
   run_on_node
   exit 0
 fi
@@ -78,6 +81,7 @@ echo "=============================================="
 cd "$PROJ"
 srun $SRUN_OPTS bash -lc "
   set -e
+  export SDL_AUDIODRIVER=dummy
   cd $PROJ
   $BLENDER_BIN -b -P render_3dmodels_dense_polyhaven.py -- \
     --group_start $GROUP_START \
