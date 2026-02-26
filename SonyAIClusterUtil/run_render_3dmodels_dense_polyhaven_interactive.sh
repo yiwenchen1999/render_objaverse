@@ -35,10 +35,10 @@ fi
 PARTITION="${PARTITION:-ct}"
 ACCOUNT="${ACCOUNT:-ct}"
 GROUP_START="${GROUP_START:-0}"
-GROUP_END="${GROUP_END:-10}"
+GROUP_END="${GROUP_END:-1}"
 OUTPUT_DIR="${OUTPUT_DIR:-/scratch2/$USER/rendered_dense_polyhaven}"
-MODEL_LQ_DIR="${MODEL_LQ_DIR:-/music-shared-disk/group/ct/yiwen/data/Polyhaven/polyhaven_models}"
-ENV_MAP_DIR="${ENV_MAP_DIR:-/music-shared-disk/group/ct/yiwen/data/envmaps/hdris}"
+MODEL_LQ_DIR="${MODEL_LQ_DIR:-/music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models}"
+ENV_MAP_DIR="${ENV_MAP_DIR:-/music-shared-disk/group/ct/yiwen/data/objaverse/hdris}"
 MODEL_LIST_PATH="${MODEL_LIST_PATH:-assets/object_ids/polyhaven_models_train.json}"
 NUM_VIEWS="${NUM_VIEWS:-4}"
 NUM_TEST_VIEWS="${NUM_TEST_VIEWS:-4}"
@@ -47,15 +47,15 @@ NUM_TEST_VIEWS="${NUM_TEST_VIEWS:-4}"
 run_on_node() {
   cd "$PROJ"
   "$BLENDER_BIN" -b -P render_3dmodels_dense_polyhaven.py -- \
-    --group_start "$GROUP_START" \
-    --group_end "$GROUP_END" \
-    --output_dir "$OUTPUT_DIR" \
-    --model_lq_dir "$MODEL_LQ_DIR" \
-    --env_map_dir_path "$ENV_MAP_DIR" \
-    --white_env_map_dir_path "$ENV_MAP_DIR" \
+    --group_start 0 \
+    --group_end 1 \
+    --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven_test \
+    --model_lq_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models \
+    --env_map_dir_path /music-shared-disk/group/ct/yiwen/data/objaverse/hdris \
+    --white_env_map_dir_path /music-shared-disk/group/ct/yiwen/data/objaverse/hdris \
     --model_list_path "$MODEL_LIST_PATH" \
-    --num_views "$NUM_VIEWS" \
-    --num_test_views "$NUM_TEST_VIEWS" \
+    --num_views 4 \
+    --num_test_views 4 \
     --rendered_dir_name /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_dense_polyhaven_test
 }
 

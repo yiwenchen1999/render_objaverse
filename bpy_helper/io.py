@@ -204,6 +204,33 @@ def render_albedo_map(output_dir, file_prefix="albedo") -> None:
     bpy.context.scene.use_nodes = False
     bpy.context.view_layer.use_pass_diffuse_color = False
 
+def _read_exr_with_bpy(path: str) -> np.ndarray:
+    """Load EXR using Blender's native loader (no imageio EXR backend needed)."""
+    img = bpy.data.images.load(path, check_existing=False)
+    w, h = img.size
+    ch = img.channels
+    arr = np.array(img.pixels[:], dtype=np.float32).reshape((h, w, ch))
+    bpy.data.images.remove(img, do_unlink=True)
+    return arr
+
+
+def _write_exr_with_bpy(path: str, data: np.ndarray) -> None:
+    """Save float image as EXR using Blender (no imageio EXR backend needed)."""
+    h, w = data.shape[0], data.shape[1]
+    ch = data.shape[2] if data.ndim == 3 else 1
+    if data.ndim == 2:
+        data = data[:, :, np.newaxis]
+    if ch == 3:
+        data = np.concatenate([data, np.ones((h, w, 1), dtype=np.float32)], axis=-1)
+        ch = 4
+    img = bpy.data.images.new("_exr_tmp", width=w, height=h, alpha=(ch == 4))
+    img.pixels.foreach_set(data.astype(np.float32).ravel())
+    img.filepath_raw = path
+    img.file_format = "OPEN_EXR"
+    img.save()
+    bpy.data.images.remove(img, do_unlink=True)
+
+
 def transform_normals_to_camera_space(normals_path, c2w, output_path):
     """
     Transforms world-space normals to camera space using c2w matrix.
@@ -212,8 +239,11 @@ def transform_normals_to_camera_space(normals_path, c2w, output_path):
     :param c2w: 4x4 camera-to-world matrix (numpy array)
     :param output_path: path to save camera-space normals
     """
-    # Load normal map (assuming it's in EXR and contains 3 channels)
-    normals = imageio.imread(normals_path)  # Automatically detects EXR
+    # Load normal map: use Blender for EXR (imageio has no EXR backend by default)
+    if normals_path.lower().endswith(".exr"):
+        normals = _read_exr_with_bpy(normals_path)
+    else:
+        normals = imageio.imread(normals_path)
     if normals.shape[-1] != 3:
         normals = normals[..., :3]  # Ignore alpha if present
     h, w, _ = normals.shape
@@ -230,11 +260,6 @@ def transform_normals_to_camera_space(normals_path, c2w, output_path):
     # Apply transformation
     normals_cam_flat = R_inv @ normals_flat  # shape (3, N)
 
-    # # Normalize if needed
-    # print("normals_cam_flat", normals_cam_flat.shape)
-    # print('norms:', np.linalg.norm(normals_cam_flat, axis=0).shape)
-    # normals_cam_flat = normals_cam_flat / np.linalg.norm(normals_cam_flat, axis=0, keepdims=True)
-
     # Reshape back to image
     normals_cam = normals_cam_flat.T.reshape(h, w, 3)
 
@@ -245,7 +270,7 @@ def transform_normals_to_camera_space(normals_path, c2w, output_path):
         imageio.imwrite(output_path, normals_cam_vis)  # Save as PNG/JPEG
     else:
         normals_cam_float32 = normals_cam.astype(np.float32)
-        imageio.imwrite(output_path, normals_cam_float32)  # Save as EXR
+        _write_exr_with_bpy(output_path, normals_cam_float32)
 
 
 
