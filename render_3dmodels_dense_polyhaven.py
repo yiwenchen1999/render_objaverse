@@ -46,6 +46,7 @@ class Options:
     model_lq_dir: str = "/music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models" # Path to Polyhaven models
     model_list_path: str = "assets/object_ids/polyhaven_models_train.json" # Path to model list JSON
     cycles_tile_size: int = 2048  # Cycles tile size for GPU (H100 can use 2048 or 4096)
+    single_model_id: Optional[str] = None  # Render only this model ID (for multi-worker mode)
 
 
 def render_core(args: Options, model_id: str, groups_id = 0):
@@ -694,11 +695,21 @@ if __name__ == '__main__':
     # Preview
     print(f"Loaded {len(model_ids)} entries")
 
-    for i in range(args.group_start, args.group_end):
-        if i >= len(model_ids):
-            break
-            
-        model_id = model_ids[i]
+    # Single model mode (for multi-worker dispatcher)
+    if args.single_model_id is not None:
+        if args.single_model_id not in model_ids:
+            print(f"Model ID {args.single_model_id} not found in model list")
+            sys.exit(1)
+        model_ids_to_render = [args.single_model_id]
+    else:
+        # Group range mode
+        model_ids_to_render = []
+        for i in range(args.group_start, args.group_end):
+            if i >= len(model_ids):
+                break
+            model_ids_to_render.append(model_ids[i])
+
+    for model_id in model_ids_to_render:
         
         # args.three_d_model_path = model_path # Not needed
         
@@ -729,6 +740,7 @@ if __name__ == '__main__':
             # if found a done.txt file, skip this model
             print('rendering group:', j)
             if os.path.exists(os.path.join(args.output_dir, model_id, 'done.txt')):
+                print(f'Skipping {model_id} (already done)')
                 continue
             try:
                 render_core(args, model_id, j)

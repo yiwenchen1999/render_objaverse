@@ -22,8 +22,8 @@ mkdir -p slurm_logs
 export SDL_AUDIODRIVER=dummy
 
 # Test: 1 model (group 0-1), few views; large tile for H100
-GROUP_START=10
-GROUP_END=11
+GROUP_START=11
+GROUP_END=12
 NUM_VIEWS=4
 NUM_TEST_VIEWS=4
 CYCLES_TILE=4096  # H100: try 2048, 4096 for higher GPU utilization
