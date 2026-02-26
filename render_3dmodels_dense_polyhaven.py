@@ -7,6 +7,11 @@ from typing import Optional
 import sys
 import glob
 
+# Ensure project root is on path so bpy_helper is found when run via Blender -b -P
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+if _script_dir not in sys.path:
+    sys.path.insert(0, _script_dir)
+
 import imageio
 import numpy as np
 import simple_parsing
