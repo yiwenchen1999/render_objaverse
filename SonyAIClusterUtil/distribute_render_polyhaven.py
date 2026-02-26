@@ -101,8 +101,12 @@ def main():
     with open(os.path.join(args.proj_root, args.model_list_path), "r") as f:
         model_list = json.load(f)
 
-    # Slice model list by group_start/group_end
-    model_ids = list(model_list.keys())[args.group_start : args.group_end]
+    # Handle both list and dict formats
+    if isinstance(model_list, dict):
+        model_ids = list(model_list.keys())[args.group_start : args.group_end]
+    else:
+        model_ids = model_list[args.group_start : args.group_end]
+    
     total = len(model_ids)
     print(f"Distributing {total} models across {args.num_gpus} GPUs with {args.workers_per_gpu} workers each")
 
