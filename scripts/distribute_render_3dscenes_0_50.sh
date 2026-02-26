@@ -9,10 +9,9 @@
 #SBATCH --output=myjob.render_scenes_dist_3000_3050.out
 #SBATCH --error=myjob.render_scenes_dist_3000_3050.err
 # =============================================================================
-# Multi-worker distributed rendering: scenes 3000-3050 with 4 workers per GPU
+# Multi-worker distributed rendering: scenes 0-50 with 4 workers per GPU
 # Submit: cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse && \
 #   sbatch scripts/distribute_render_3dscenes_0_50.sh
-# Prerequisite: conda activate blender-env (before submitting)
 # =============================================================================
 
 cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
@@ -33,10 +32,6 @@ python scripts/distribute_render_3dscenes.py \
   --texture_dir /projects/vig/Datasets/Polyhaven/polyhaven_textures \
   --glb_list_path test_obj_curated.csv \
   --glbs_root_path /projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/ \
-  --num_white_pls 0 \
-  --num_rgb_pls 0 \
-  --num_multi_pls 0 \
-  --num_area_lights 0 \
   --proj_root /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 
 echo "Done."
