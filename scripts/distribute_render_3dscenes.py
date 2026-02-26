@@ -47,6 +47,7 @@ def worker(
             f"--texture_dir {args.texture_dir} "
             f"--glb_list_path {args.glb_list_path} "
             f"--glbs_root_path {args.glbs_root_path}"
+            
         )
 
         try:
