@@ -5,7 +5,7 @@
 #SBATCH --job-name=render_scenes_dist_5800_5850
 #SBATCH --mem=32
 #SBATCH --ntasks=8
-#SBATCH --gres=gpu:a5000:1
+#SBATCH --gres=gpu:1
 #SBATCH --output=myjob.render_scenes_dist_5800_5850.out
 #SBATCH --error=myjob.render_scenes_dist_5800_5850.err
 # =============================================================================
