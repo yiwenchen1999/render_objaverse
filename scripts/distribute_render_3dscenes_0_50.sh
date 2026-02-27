@@ -18,13 +18,13 @@ cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 
 python scripts/distribute_render_3dscenes.py \
   --num_gpus 1 \
-  --workers_per_gpu 8 \
-  --group_start 3000 \
-  --group_end 3050 \
+  --workers_per_gpu 2 \
+  --group_start 4000 \
+  --group_end 4050 \
   --num_white_envs 1 \
-  --num_env_lights 3 \
-  --num_white_pls 3 \
-  --num_rgb_pls 1 \
+  --num_env_lights 0 \
+  --num_white_pls 0 \
+  --num_rgb_pls 0 \
   --num_multi_pls 0 \
   --num_area_lights 0 \
   --model_lq_dir /projects/vig/Datasets/Polyhaven/polyhaven_models \
