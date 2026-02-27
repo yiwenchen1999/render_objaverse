@@ -5,6 +5,9 @@ find -maxdepth 1 -type d | sort | while read -r dir; do n=$(find "$dir" -type f 
 
 python3 scripts/sample_test_obj.py
 
+# Update curated scene list from asset_samples/lvis_curated/
+python3 update_curated_scenes.py
+
 cd /Users/yiwenchen/Desktop/ResearchProjects/scripts
 source venv/bin/activate
 
