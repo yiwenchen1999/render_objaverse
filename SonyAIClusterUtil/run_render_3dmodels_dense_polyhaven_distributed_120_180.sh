@@ -25,7 +25,7 @@ cd "$PROJ"
 # Multi-worker: 4 Blender processes per GPU
 python3 SonyAIClusterUtil/distribute_render_polyhaven.py \
   --num_gpus 1 \
-  --workers_per_gpu 8 \
+  --workers_per_gpu 6 \
   --group_start 120 \
   --group_end 180 \
   --model_list_path assets/object_ids/polyhaven_models_train.json \
