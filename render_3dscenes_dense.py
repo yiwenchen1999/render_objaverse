@@ -1037,7 +1037,15 @@ def render_core(args: Options, groups_id = 0):
 if __name__ == '__main__':
     dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
 
-    args: Options = simple_parsing.parse(Options)
+    # When run via Blender -b -P script.py -- args, we need to parse only args after --
+    # sys.argv includes Blender's own arguments before --
+    import sys
+    if '--' in sys.argv:
+        script_args = sys.argv[sys.argv.index('--') + 1:]
+    else:
+        script_args = sys.argv[1:]
+    
+    args: Options = simple_parsing.parse(Options, args=script_args)
     if args.scene_seed is not None:
         random.seed(args.scene_seed)
         np.random.seed(args.scene_seed)
