@@ -25,6 +25,12 @@ def worker(
     args: argparse.Namespace,
 ) -> None:
     """Worker process: render scenes from queue on specified GPU."""
+    blender_bin = args.blender_bin
+    if not blender_bin:
+        # Auto-detect Blender
+        blender_bin = os.path.join(args.proj_root, "neuralGaufferRendering/blender-3.2.2-linux-x64/blender")
+        if not os.path.exists(blender_bin):
+            blender_bin = os.path.join(args.proj_root, "neuralGaufferRendering/blender-4.2-linux-x64/blender")
     
     while True:
         item = queue.get()
@@ -36,7 +42,9 @@ def worker(
 
         # Build Blender command
         command = (
-            f"CUDA_VISIBLE_DEVICES={gpu} {args.blender_bin} -b -P {args.proj_root}/render_3dscenes_dense.py -- "
+            f"CUDA_VISIBLE_DEVICES={gpu} "
+            f"SDL_AUDIODRIVER=dummy "
+            f"{blender_bin} -b -P {args.proj_root}/render_3dscenes_dense.py -- "
             f"--group_start {scene_idx} --group_end {scene_idx + 1} "
             f"--num_views {args.num_views} "
             f"--num_test_views {args.num_test_views} "
@@ -88,25 +96,13 @@ def main():
     parser.add_argument("--num_multi_pls", type=int, default=0)
     parser.add_argument("--num_area_lights", type=int, default=0)
     parser.add_argument("--proj_root", type=str, default="/music-shared-disk/group/ct/yiwen/codes/render_objaverse")
-    parser.add_argument("--blender_bin", type=str, default=None)
+    parser.add_argument("--blender_bin", type=str, default=None, help="Path to Blender binary")
     args = parser.parse_args()
-
-    # Auto-detect Blender if not specified
-    if args.blender_bin is None:
-        blender_322 = f"{args.proj_root}/neuralGaufferRendering/blender-3.2.2-linux-x64/blender"
-        blender_42 = f"{args.proj_root}/neuralGaufferRendering/blender-4.2-linux-x64/blender"
-        if os.path.exists(blender_322):
-            args.blender_bin = blender_322
-        elif os.path.exists(blender_42):
-            args.blender_bin = blender_42
-        else:
-            print("Error: Blender not found. Please specify --blender_bin")
-            sys.exit(1)
 
     scene_indices = list(range(args.group_start, args.group_end))
     total = len(scene_indices)
     print(f"Distributing {total} scenes across {args.num_gpus} GPUs with {args.workers_per_gpu} workers each")
-    print(f"Blender: {args.blender_bin}")
+    print(f"Project root: {args.proj_root}")
     print(f"GLBs root: {args.glbs_root_path}")
 
     queue = multiprocessing.JoinableQueue()
