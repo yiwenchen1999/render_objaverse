@@ -80,8 +80,10 @@ def render_core(args: Options, groups_id = 0):
         # Rotate arbitrarily around up axis
         plane.rotation_euler = [0, 0, random.uniform(0, 2*math.pi)]
         
-        # Texture
-        if os.path.exists(texture_dir):
+        # 50% chance to apply texture, 50% chance to leave it without texture
+        apply_texture = random.random() < 0.5
+        
+        if apply_texture and os.path.exists(texture_dir):
             try:
                 subdirs = [d for d in os.listdir(texture_dir) if os.path.isdir(os.path.join(texture_dir, d))]
                 if subdirs:
@@ -110,6 +112,7 @@ def render_core(args: Options, groups_id = 0):
                             img = bpy.data.images.load(texture_path)
                             tex_image.image = img
                             links.new(tex_image.outputs['Color'], bsdf.inputs['Base Color'])
+                            print(f"Applied texture to plane: {texture_path}")
                         except Exception as e:
                             print(f"Could not load texture {texture_path}: {e}")
                             
@@ -123,6 +126,8 @@ def render_core(args: Options, groups_id = 0):
                         bpy.ops.object.mode_set(mode='OBJECT')
             except Exception as e:
                 print(f"Error applying texture to plane: {e}")
+        else:
+            print(f"Ground plane created without texture (apply_texture={apply_texture})")
 
     def get_world_bbox(obj):
         """
