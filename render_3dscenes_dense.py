@@ -1036,6 +1036,8 @@ def render_core(args: Options, groups_id = 0):
 
 if __name__ == '__main__':
     dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
+    if not os.path.exists(dataset_path):
+        dataset_path = '/music-shared-disk/group/ct/yiwen/data/objaverse/objaverse/hf-objaverse-v1/glbs/'
 
     # When run via Blender -b -P script.py -- args, we need to parse only args after --
     # sys.argv includes Blender's own arguments before --
