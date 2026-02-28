@@ -1052,10 +1052,23 @@ if __name__ == '__main__':
         random.seed(args.scene_seed)
         np.random.seed(args.scene_seed)
         print(f"Setting scene random seed to {args.scene_seed}")
+    # Use glb_list_path if provided, otherwise fall back to csv_path
+    if args.glb_list_path != 'test_obj_curated.csv' or not os.path.exists(args.csv_path):
+        # Using glb_list_path (new curated list)
+        dataset_path = args.glbs_root_path
+        csv_file = args.glb_list_path
+    else:
+        # Using csv_path (old method)
+        dataset_path = '/projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/'
+        csv_file = args.csv_path
+    
+    # Store the original output_dir from command line
+    user_specified_output_dir = args.output_dir
+    
     print(Options)
     import csv
     index_uid_list = []
-    with open(args.csv_path, newline='') as csvfile:
+    with open(csv_file, newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if len(row) == 2:
@@ -1071,9 +1084,19 @@ if __name__ == '__main__':
         model_path = os.path.join(dataset_path, index, f'{uid}.glb')
         # model_path = os.path.join(dataset_path,'000-000', f'000074a334c541878360457c672b6c2e.glb')
         args.three_d_model_path = model_path
-        if not os.path.exists(dataset_path.replace('glbs', args.rendered_dir_name)):
-            os.makedirs(dataset_path.replace('glbs', args.rendered_dir_name))
-        args.output_dir = os.path.join(dataset_path.replace('glbs', args.rendered_dir_name))
+        
+        # Determine output directory
+        # If user specified output_dir via command line (not default), use it
+        if user_specified_output_dir != './output':
+            # User specified a custom output_dir, use it directly
+            args.output_dir = user_specified_output_dir
+            if not os.path.exists(args.output_dir):
+                os.makedirs(args.output_dir)
+        else:
+            # Use default behavior: replace 'glbs' with rendered_dir_name
+            if not os.path.exists(dataset_path.replace('glbs', args.rendered_dir_name)):
+                os.makedirs(dataset_path.replace('glbs', args.rendered_dir_name))
+            args.output_dir = os.path.join(dataset_path.replace('glbs', args.rendered_dir_name))
         # Set the seed for reproducibility
         if args.seed is not None:
             random.seed(args.seed)
