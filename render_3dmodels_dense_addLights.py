@@ -642,10 +642,11 @@ def render_core(args: Options, groups_id = 0):
             'color': color,
         }, open(f'{env_path}/area.json', 'w'), indent=4)
 
-    #* 2.7 render the combined lighting (env + white point light)
+    #* 2.7 render the combined lighting (env + multiple white point lights)
+    # Generate enough point light positions for all combined lighting variations
     combined_pls = gen_random_pts_around_origin(
         seed=seed_combined,
-        N=args.num_combined_lights,
+        N=args.num_combined_lights * args.max_pl_num,  # Generate enough positions
         min_dist_to_origin=3.5,
         max_dist_to_origin=5.0,
         min_theta_in_degree=0,
@@ -666,11 +667,15 @@ def render_core(args: Options, groups_id = 0):
         strength = 1.0
         set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
         
-        # Then add a white point light
-        pl = combined_pls[combined_idx]
-        power = random.uniform(500, 1500)
-        color = [1.0, 1.0, 1.0]  # white point light
-        _point_light = create_point_light(pl, power, rgb=color)
+        # Randomly decide how many point lights to add (1 to max_pl_num)
+        num_pls = random.randint(1, args.max_pl_num)
+        pls = combined_pls[combined_idx * args.max_pl_num: combined_idx * args.max_pl_num + num_pls]
+        powers = [random.uniform(500, 1500) for _ in range(num_pls)]
+        colors = [[1.0, 1.0, 1.0] for _ in range(num_pls)]  # All white point lights
+        
+        # Add multiple white point lights
+        for pl_idx in range(num_pls):
+            create_point_light(pls[pl_idx], powers[pl_idx], rgb=colors[pl_idx], keep_other_lights=pl_idx > 0)
 
         for eye_idx, c2w, fov in cameras:
             camera = create_camera(c2w, fov)
@@ -701,14 +706,14 @@ def render_core(args: Options, groups_id = 0):
 
             bpy.data.objects.remove(camera, do_unlink=True)
 
-        # save the combined light info (env map + point light)
+        # save the combined light info (env map + multiple point lights)
         json.dump({
             'env_map': env_map,
             'rotation_euler': rotation_euler,
             'strength': strength,
-            'pos': array2list(pl),
-            'power': power,
-            'color': color,
+            'pos': mat2list(pls),
+            'power': powers,
+            'color': colors,
         }, open(f'{env_path}/combined.json', 'w'), indent=4)
 
     # store a file indicating the end of the rendering
