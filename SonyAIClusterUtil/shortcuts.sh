@@ -13,6 +13,7 @@ rsync -avh --partial --inplace --progress \
   polyhaven_textures/
 
 # env creation:
+sbash --partition=ct_l40s --account=ct --nodes=1 --gpus=1
 sbash --partition=ct --account=ct --nodes=1 --gpus=1
 sbash --partition=sharedp --account=ct --nodes=1 --gpus=1
 
