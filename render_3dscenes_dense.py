@@ -37,6 +37,7 @@ class Options:
     num_white_envs: int = 1  # Number of white env lighting
     num_env_lights: int = 5  # Number of env lighting
     num_area_lights: int = 0  # Number of area lights
+    num_combined_lights: int = 0  # Number of combined lights (env + white point light)
     seed: Optional[int] = None  # Random seed
     num_view_groups: int = 1  # Number of view groups
     group_start: int = 0
@@ -493,6 +494,7 @@ def render_core(args: Options, groups_id = 0):
     seed_rgb_pl = None if args.seed is None else args.seed + 2
     seed_multi_pl = None if args.seed is None else args.seed + 3
     seed_area = None if args.seed is None else args.seed + 4
+    seed_combined = None if args.seed is None else args.seed + 5
     # file_path is not defined here, we should use args.three_d_model_path or extract the UID
     # The original code used file_path which was args.three_d_model_path
     file_path = args.three_d_model_path
@@ -1027,6 +1029,75 @@ def render_core(args: Options, groups_id = 0):
             'size': area_light_size,
             'color': color,
         }, open(f'{env_path}/area.json', 'w'), indent=4)
+
+    #* 2.7 render the combined lighting (env + white point light)
+    combined_pls = gen_random_pts_around_origin(
+        seed=seed_combined,
+        N=args.num_combined_lights,
+        min_dist_to_origin=3.5,
+        max_dist_to_origin=5.0,
+        min_theta_in_degree=0,
+        max_theta_in_degree=85
+    )
+    for combined_idx in range(args.num_combined_lights):
+        train_env_path = f'{res_dir}/train/combined_{combined_idx}'
+        test_env_path = f'{res_dir}/test/combined_{combined_idx}'
+        
+        if is_folder_populated(train_env_path, len(cameras)) and is_folder_populated(test_env_path, len(cameras_test)):
+            print(f"Skipping existing light: combined_{combined_idx}")
+            continue
+
+        # First, set a random env light
+        env_map = random.choice(env_map_list)
+        env_map_path = f'{args.env_map_dir_path}/{env_map}_8k.exr'
+        rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
+        strength = 1.0
+        set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
+        
+        # Then add a white point light
+        pl = combined_pls[combined_idx]
+        power = random.uniform(500, 1500)
+        color = [1.0, 1.0, 1.0]  # white point light
+        _point_light = create_point_light(pl, power, rgb=color, keep_other_lights=True)
+
+        for eye_idx, c2w, fov in cameras:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/train'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/combined_{combined_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        #* render the test views for combined lighting
+        for eye_idx, c2w, fov in cameras_test:
+            camera = create_camera(c2w, fov)
+            bpy.context.scene.camera = camera
+            view_path = f'{res_dir}/test'
+            if not os.path.exists(view_path):
+                os.makedirs(view_path)
+
+            env_path = f'{view_path}/combined_{combined_idx}'
+            os.makedirs(env_path, exist_ok=True)
+            with stdout_redirected():
+                render_rgb_and_hint(f'{env_path}', eye_idx)
+
+            bpy.data.objects.remove(camera, do_unlink=True)
+
+        # save the combined light info (env map + point light)
+        json.dump({
+            'env_map': env_map,
+            'rotation_euler': rotation_euler,
+            'strength': strength,
+            'pos': array2list(pl),
+            'power': power,
+            'color': color,
+        }, open(f'{env_path}/combined.json', 'w'), indent=4)
 
     # store a file indicating the end of the rendering
     with open(os.path.join(res_dir, 'done.txt'), 'w') as f:

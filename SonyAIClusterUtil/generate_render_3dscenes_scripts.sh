@@ -100,6 +100,7 @@ python3 SonyAIClusterUtil/distribute_render_3dscenes_sony.py \\
   --num_rgb_pls 1 \\
   --num_multi_pls 0 \\
   --num_area_lights 0 \\
+  --num_combined_lights 0 \\
   --model_lq_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models \\
   --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_scenes_dense \\
   --texture_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_textures \\

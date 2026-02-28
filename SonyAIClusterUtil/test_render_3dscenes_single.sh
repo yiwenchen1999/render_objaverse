@@ -16,8 +16,8 @@ python3 SonyAIClusterUtil/distribute_render_3dscenes_sony.py \
   --num_gpus 1 \
   --workers_per_gpu 4 \
   --group_start 0 \
-  --group_end 8 \
-  --num_views 5 \
+  --group_end 10 \
+  --num_views 20 \
   --num_test_views 5 \
   --num_white_envs 1 \
   --num_env_lights 1 \
@@ -25,6 +25,7 @@ python3 SonyAIClusterUtil/distribute_render_3dscenes_sony.py \
   --num_rgb_pls 0 \
   --num_multi_pls 0 \
   --num_area_lights 0 \
+  --num_combined_lights 1 \
   --model_lq_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models \
   --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/test_rendered_scenes \
   --texture_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_textures \

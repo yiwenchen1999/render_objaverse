@@ -54,6 +54,7 @@ def worker(
             f"--num_rgb_pls {args.num_rgb_pls} "
             f"--num_multi_pls {args.num_multi_pls} "
             f"--num_area_lights {args.num_area_lights} "
+            f"--num_combined_lights {args.num_combined_lights} "
             f"--model_lq_dir {args.model_lq_dir} "
             f"--output_dir {args.output_dir} "
             f"--texture_dir {args.texture_dir} "
@@ -95,6 +96,7 @@ def main():
     parser.add_argument("--num_rgb_pls", type=int, default=1)
     parser.add_argument("--num_multi_pls", type=int, default=0)
     parser.add_argument("--num_area_lights", type=int, default=0)
+    parser.add_argument("--num_combined_lights", type=int, default=0)
     parser.add_argument("--proj_root", type=str, default="/music-shared-disk/group/ct/yiwen/codes/render_objaverse")
     parser.add_argument("--blender_bin", type=str, default=None, help="Path to Blender binary")
     args = parser.parse_args()

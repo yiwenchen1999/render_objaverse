@@ -45,6 +45,7 @@ def worker(
             f"--num_rgb_pls {args.num_rgb_pls} "
             f"--num_multi_pls {args.num_multi_pls} "
             f"--num_area_lights {args.num_area_lights} "
+            f"--num_combined_lights {args.num_combined_lights} "
             f"--model_lq_dir {args.model_lq_dir} "
             f"--output_dir {args.output_dir} "
             f"--texture_dir {args.texture_dir} "
@@ -82,6 +83,7 @@ def main():
     parser.add_argument("--num_rgb_pls", type=int, default=0)
     parser.add_argument("--num_multi_pls", type=int, default=0)
     parser.add_argument("--num_area_lights", type=int, default=0)
+    parser.add_argument("--num_combined_lights", type=int, default=0)
     parser.add_argument("--proj_root", type=str, default="/projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse")
     args = parser.parse_args()
 
