@@ -785,6 +785,10 @@ def render_core(args: Options, groups_id = 0):
 
                 bpy.data.objects.remove(camera, do_unlink=True)
 
+            # Save light info for train
+            train_env_path = f'{res_dir}/train/combined_{stage_idx}'
+            json.dump(light_info, open(f'{train_env_path}/combined.json', 'w'), indent=4)
+
             # Render test views
             for eye_idx, c2w, fov in cameras_test:
                 camera = create_camera(c2w, fov)
@@ -800,8 +804,9 @@ def render_core(args: Options, groups_id = 0):
 
                 bpy.data.objects.remove(camera, do_unlink=True)
 
-            # Save light info for this stage
-            json.dump(light_info, open(f'{env_path}/combined.json', 'w'), indent=4)
+            # Save light info for test
+            test_env_path = f'{res_dir}/test/combined_{stage_idx}'
+            json.dump(light_info, open(f'{test_env_path}/combined.json', 'w'), indent=4)
 
     # store a file indicating the end of the rendering
     with open(os.path.join(res_dir, 'done.txt'), 'w') as f:
