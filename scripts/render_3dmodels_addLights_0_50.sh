@@ -19,17 +19,17 @@ cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 python scripts/distribute_render_3dmodels_addLights.py \
   --num_gpus 1 \
   --workers_per_gpu 2 \
-  --group_start 20 \
-  --group_end 26 \
+  --group_start 30 \
+  --group_end 36 \
   --num_views 4 \
   --num_test_views 4 \
-  --num_white_envs 1 \
+  --num_white_envs 0 \
   --num_env_lights 0 \
-  --num_white_pls 1 \
+  --num_white_pls 0 \
   --num_rgb_pls 0 \
   --num_multi_pls 0 \
   --num_area_lights 0 \
-  --num_combined_lights 1 \
+  --num_combined_lights 4 \
   --rendered_dir_name rendered_dense_lightPlus_test \
   --csv_path test_obj.csv \
   --proj_root /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
