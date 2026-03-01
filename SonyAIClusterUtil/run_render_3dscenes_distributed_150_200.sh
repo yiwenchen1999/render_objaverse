@@ -28,7 +28,7 @@ python3 SonyAIClusterUtil/distribute_render_3dscenes_sony.py \
   --workers_per_gpu 6 \
   --group_start 6750 \
   --group_end 7000 \
-  --num_views 0 \
+  --num_views 30 \
   --num_test_views 50 \
   --num_white_envs 1 \
   --num_env_lights 2 \
