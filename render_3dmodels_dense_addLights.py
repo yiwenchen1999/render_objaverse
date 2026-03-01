@@ -708,11 +708,12 @@ def render_core(args: Options, groups_id = 0):
             # Stage 1: Add 1st point light
             elif stage_idx == 1:
                 set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
-                create_point_light(combined_pls[0], point_powers[0], rgb=point_colors[0])
+                create_point_light(combined_pls[0], point_powers[0], rgb=point_colors[0], keep_other_lights=True)
                 light_info = {
                     'stage': 1,
                     'description': 'env + 1 point light',
                     'env_map': env_map,
+                    'has_env_light': True,
                     'rotation_euler': rotation_euler,
                     'strength': strength,
                     'point_lights': {
@@ -725,12 +726,13 @@ def render_core(args: Options, groups_id = 0):
             # Stage 2: Add 2nd point light (if available)
             elif stage_idx == 2 and num_point_lights >= 2:
                 set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
-                create_point_light(combined_pls[0], point_powers[0], rgb=point_colors[0])
+                create_point_light(combined_pls[0], point_powers[0], rgb=point_colors[0], keep_other_lights=True)
                 create_point_light(combined_pls[1], point_powers[1], rgb=point_colors[1], keep_other_lights=True)
                 light_info = {
                     'stage': 2,
                     'description': 'env + 2 point lights',
                     'env_map': env_map,
+                    'has_env_light': True,
                     'rotation_euler': rotation_euler,
                     'strength': strength,
                     'point_lights': {
@@ -745,7 +747,7 @@ def render_core(args: Options, groups_id = 0):
                 set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
                 # Add all available point lights
                 for pl_idx in range(num_point_lights):
-                    create_point_light(combined_pls[pl_idx], point_powers[pl_idx], rgb=point_colors[pl_idx], keep_other_lights=pl_idx > 0)
+                    create_point_light(combined_pls[pl_idx], point_powers[pl_idx], rgb=point_colors[pl_idx], keep_other_lights=True)
                 # Add area light
                 create_area_light(area_light_pos, area_light_power, area_light_size, color=area_light_color, keep_other_lights=True)
                 
@@ -760,6 +762,7 @@ def render_core(args: Options, groups_id = 0):
                     'description': f'env + {num_point_lights} point lights + area light',
                     'env_map': env_map,
                     'rotation_euler': rotation_euler,
+                    'has_env_light': True,
                     'strength': strength,
                     'point_lights': point_lights_data,
                     'area_light': {
