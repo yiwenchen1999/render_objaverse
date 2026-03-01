@@ -26,17 +26,17 @@ cd "$PROJ"
 python3 SonyAIClusterUtil/distribute_render_3dscenes_sony.py \
   --num_gpus 1 \
   --workers_per_gpu 6 \
-  --group_start 5750 \
-  --group_end 6000 \
-  --num_views 30 \
+  --group_start 6750 \
+  --group_end 7000 \
+  --num_views 0 \
   --num_test_views 50 \
   --num_white_envs 1 \
-  --num_env_lights 3 \
-  --num_white_pls 3 \
+  --num_env_lights 2 \
+  --num_white_pls 2 \
   --num_rgb_pls 1 \
-  --num_multi_pls 0 \
-  --num_area_lights 0 \
-  --num_combined_lights 2 \
+  --num_multi_pls 1 \
+  --num_area_lights 1 \
+  --num_combined_lights 4 \
   --model_lq_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_models \
   --output_dir /music-shared-disk/group/ct/yiwen/data/objaverse/rendered_scenes_dense \
   --texture_dir /music-shared-disk/group/ct/yiwen/data/objaverse/polyhaven_textures \
