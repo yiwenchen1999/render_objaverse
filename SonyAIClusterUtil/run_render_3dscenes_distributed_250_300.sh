@@ -5,7 +5,7 @@
 #SBATCH --job-name=render_scenes_150_200
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --output=slurm_logs/%x.%j.out
 #SBATCH --error=slurm_logs/%x.%j.err
 # =============================================================================
@@ -24,7 +24,7 @@ cd "$PROJ"
 
 # Multi-worker: 4 Blender processes per GPU
 python3 SonyAIClusterUtil/distribute_render_3dscenes_sony.py \
-  --num_gpus 1 \
+  --num_gpus 2 \
   --workers_per_gpu 6 \
   --group_start 7250 \
   --group_end 7500 \
