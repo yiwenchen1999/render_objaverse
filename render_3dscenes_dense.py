@@ -1035,74 +1035,171 @@ def render_core(args: Options, groups_id = 0):
             'color': color,
         }, open(f'{env_path}/area.json', 'w'), indent=4)
 
-    #* 2.7 render the combined lighting (env + white point light)
+    #* 2.7 render the combined lighting (progressive: env -> +point1 -> +point2 -> +area)
+    # Generate positions for point lights and area light
+    num_point_lights = min(2, args.max_pl_num)  # Use up to 2 point lights
     combined_pls = gen_random_pts_around_origin(
         seed=seed_combined,
-        N=args.num_combined_lights,
+        N=num_point_lights,
         min_dist_to_origin=3.5,
         max_dist_to_origin=5.0,
         min_theta_in_degree=0,
         max_theta_in_degree=85
     )
-    for combined_idx in range(args.num_combined_lights):
-        train_env_path = f'{res_dir}/train/combined_{combined_idx}'
-        test_env_path = f'{res_dir}/test/combined_{combined_idx}'
-        
-        if is_folder_populated(train_env_path, len(cameras)) and is_folder_populated(test_env_path, len(cameras_test)):
-            print(f"Skipping existing light: combined_{combined_idx}")
-            continue
-
-        # First, set a random env light
+    area_light_positions = gen_random_pts_around_origin(
+        seed=seed_combined + 100 if seed_combined is not None else None,
+        N=1,
+        min_dist_to_origin=3.0,
+        max_dist_to_origin=6.0,
+        min_theta_in_degree=0,
+        max_theta_in_degree=85
+    )
+    
+    if args.num_combined_lights > 0:
+        # Setup: Choose env map parameters (shared across all progressive stages)
         env_map = random.choice(env_map_list)
         env_map_path = f'{args.env_map_dir_path}/{env_map}_8k.exr'
         rotation_euler = [0, 0, random.uniform(-math.pi, math.pi)]
         strength = 1.0
-        set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
         
-        # Then add a white point light
-        pl = combined_pls[combined_idx]
-        power = random.uniform(500, 1500)
-        color = [1.0, 1.0, 1.0]  # white point light
-        _point_light = create_point_light(pl, power, rgb=color, keep_other_lights=True)
+        # Generate light parameters
+        point_powers = [random.uniform(500, 1500) for _ in range(num_point_lights)]
+        point_colors = [[1.0, 1.0, 1.0] for _ in range(num_point_lights)]
+        
+        area_light_pos = area_light_positions[0]
+        area_light_power = random.uniform(700, 1500)
+        area_light_size = random.uniform(5., 10.)
+        area_light_color = [1.0, 1.0, 1.0]  # white area light
+        
+        # Progressive rendering stages
+        # Stage 0: env map only
+        # Stage 1: env + 1st point light
+        # Stage 2: env + 1st point + 2nd point light
+        # Stage 3: env + 1st point + 2nd point + area light
+        max_stages = 1 + num_point_lights + 1  # env + points + area
+        num_stages = min(args.num_combined_lights, max_stages)
+        
+        for stage_idx in range(num_stages):
+            train_env_path = f'{res_dir}/train/combined_{stage_idx}'
+            test_env_path = f'{res_dir}/test/combined_{stage_idx}'
+            
+            if is_folder_populated(train_env_path, len(cameras)) and is_folder_populated(test_env_path, len(cameras_test)):
+                print(f"Skipping existing light: combined_{stage_idx}")
+                continue
+            
+            # Stage 0: Set env light
+            if stage_idx == 0:
+                set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
+                light_info = {
+                    'stage': 0,
+                    'description': 'env_only',
+                    'env_map': env_map,
+                    'rotation_euler': rotation_euler,
+                    'strength': strength,
+                }
+            
+            # Stage 1: Add 1st point light
+            elif stage_idx == 1:
+                set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
+                create_point_light(combined_pls[0], point_powers[0], rgb=point_colors[0], keep_other_lights=True)
+                light_info = {
+                    'stage': 1,
+                    'description': 'env + 1 point light',
+                    'env_map': env_map,
+                    'rotation_euler': rotation_euler,
+                    'strength': strength,
+                    'point_lights': {
+                        'pos': [array2list(combined_pls[0])],
+                        'power': [point_powers[0]],
+                        'color': [point_colors[0]],
+                    }
+                }
+            
+            # Stage 2: Add 2nd point light (if available)
+            elif stage_idx == 2 and num_point_lights >= 2:
+                set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
+                create_point_light(combined_pls[0], point_powers[0], rgb=point_colors[0], keep_other_lights=True)
+                create_point_light(combined_pls[1], point_powers[1], rgb=point_colors[1], keep_other_lights=True)
+                light_info = {
+                    'stage': 2,
+                    'description': 'env + 2 point lights',
+                    'env_map': env_map,
+                    'rotation_euler': rotation_euler,
+                    'strength': strength,
+                    'point_lights': {
+                        'pos': [array2list(combined_pls[0]), array2list(combined_pls[1])],
+                        'power': [point_powers[0], point_powers[1]],
+                        'color': [point_colors[0], point_colors[1]],
+                    }
+                }
+            
+            # Stage 3+: Add area light
+            elif stage_idx >= 3 or (stage_idx == 2 and num_point_lights < 2):
+                set_env_light(env_map_path, rotation_euler=rotation_euler, strength=strength)
+                # Add all available point lights
+                for pl_idx in range(num_point_lights):
+                    create_point_light(combined_pls[pl_idx], point_powers[pl_idx], rgb=point_colors[pl_idx], keep_other_lights=(pl_idx > 0 or True))
+                # Add area light
+                create_area_light(area_light_pos, area_light_power, area_light_size, color=area_light_color, keep_other_lights=True)
+                
+                point_lights_data = {
+                    'pos': [array2list(combined_pls[i]) for i in range(num_point_lights)],
+                    'power': point_powers[:num_point_lights],
+                    'color': point_colors[:num_point_lights],
+                } if num_point_lights > 0 else None
+                
+                light_info = {
+                    'stage': 3,
+                    'description': f'env + {num_point_lights} point lights + area light',
+                    'env_map': env_map,
+                    'rotation_euler': rotation_euler,
+                    'strength': strength,
+                    'point_lights': point_lights_data,
+                    'area_light': {
+                        'pos': array2list(area_light_pos),
+                        'power': area_light_power,
+                        'size': area_light_size,
+                        'color': area_light_color,
+                    }
+                }
+            
+            # Render train views
+            for eye_idx, c2w, fov in cameras:
+                camera = create_camera(c2w, fov)
+                bpy.context.scene.camera = camera
+                view_path = f'{res_dir}/train'
+                if not os.path.exists(view_path):
+                    os.makedirs(view_path)
 
-        for eye_idx, c2w, fov in cameras:
-            camera = create_camera(c2w, fov)
-            bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/train'
-            if not os.path.exists(view_path):
-                os.makedirs(view_path)
+                env_path = f'{view_path}/combined_{stage_idx}'
+                os.makedirs(env_path, exist_ok=True)
+                with stdout_redirected():
+                    render_rgb_and_hint(f'{env_path}', eye_idx)
 
-            env_path = f'{view_path}/combined_{combined_idx}'
-            os.makedirs(env_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{env_path}', eye_idx)
+                bpy.data.objects.remove(camera, do_unlink=True)
 
-            bpy.data.objects.remove(camera, do_unlink=True)
+            # Save light info for train
+            train_json_path = f'{res_dir}/train/combined_{stage_idx}'
+            json.dump(light_info, open(f'{train_json_path}/combined.json', 'w'), indent=4)
 
-        #* render the test views for combined lighting
-        for eye_idx, c2w, fov in cameras_test:
-            camera = create_camera(c2w, fov)
-            bpy.context.scene.camera = camera
-            view_path = f'{res_dir}/test'
-            if not os.path.exists(view_path):
-                os.makedirs(view_path)
+            # Render test views
+            for eye_idx, c2w, fov in cameras_test:
+                camera = create_camera(c2w, fov)
+                bpy.context.scene.camera = camera
+                view_path = f'{res_dir}/test'
+                if not os.path.exists(view_path):
+                    os.makedirs(view_path)
 
-            env_path = f'{view_path}/combined_{combined_idx}'
-            os.makedirs(env_path, exist_ok=True)
-            with stdout_redirected():
-                render_rgb_and_hint(f'{env_path}', eye_idx)
+                env_path = f'{view_path}/combined_{stage_idx}'
+                os.makedirs(env_path, exist_ok=True)
+                with stdout_redirected():
+                    render_rgb_and_hint(f'{env_path}', eye_idx)
 
-            bpy.data.objects.remove(camera, do_unlink=True)
+                bpy.data.objects.remove(camera, do_unlink=True)
 
-        # save the combined light info (env map + point light)
-        json.dump({
-            'env_map': env_map,
-            'rotation_euler': rotation_euler,
-            'strength': strength,
-            'pos': array2list(pl),
-            'power': power,
-            'color': color,
-        }, open(f'{env_path}/combined.json', 'w'), indent=4)
+            # Save light info for test
+            test_json_path = f'{res_dir}/test/combined_{stage_idx}'
+            json.dump(light_info, open(f'{test_json_path}/combined.json', 'w'), indent=4)
 
     # store a file indicating the end of the rendering
     with open(os.path.join(res_dir, 'done.txt'), 'w') as f:

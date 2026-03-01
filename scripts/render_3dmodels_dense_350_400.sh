@@ -2,15 +2,36 @@
 #SBATCH --partition=jiang
 #SBATCH --nodes=1
 #SBATCH --time=60:00:00
-#SBATCH --job-name=render_objaverse_addLights_11550_11600
+#SBATCH --job-name=render_models_dense_dist_350_400
 #SBATCH --mem=32
 #SBATCH --ntasks=8
 #SBATCH --gres=gpu:a5000:1
-#SBATCH --output=myjob.render_objaverse_addLights_11550_11600.out
-#SBATCH --error=myjob.render_objaverse_addLights_11550_11600.err
+#SBATCH --output=myjob.render_models_dense_dist_350_400.out
+#SBATCH --error=myjob.render_models_dense_dist_350_400.err
+# =============================================================================
+# Multi-worker distributed rendering: models 350-400 with 2 workers per GPU
+# Submit: cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse && \
+#   sbatch scripts/render_3dmodels_dense_350_400.sh
+# =============================================================================
 
-# python ../download.py --base_path /projects/vig/Datasets --begin_uid 350 --end_uid 400
-python render_3dmodels_dense_addLights.py --group_start 11550 --group_end 11600 \
---num_views 30 --num_env_lights 0 --num_white_envs 1 --num_test_views 50 \
---num_white_pls 3 --num_rgb_pls 1 --num_multi_pls 0 --save_intrinsics True \
---num_area_lights 0 --rendered_dir_name rendered_dense_lightPlus
+cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
+
+python scripts/distribute_render_3dmodels_addLights.py \
+  --num_gpus 1 \
+  --workers_per_gpu 2 \
+  --group_start 7350 \
+  --group_end 7400 \
+  --num_views 30 \
+  --num_test_views 50 \
+  --num_white_envs 1 \
+  --num_env_lights 0 \
+  --num_white_pls 1 \
+  --num_rgb_pls 1 \
+  --num_multi_pls 1 \
+  --num_area_lights 1 \
+  --num_combined_lights 4 \
+  --rendered_dir_name rendered_dense_lightPlus \
+  --csv_path test_obj.csv \
+  --proj_root /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
+
+echo "Done."
