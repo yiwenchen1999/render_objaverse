@@ -19,8 +19,8 @@ cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 python scripts/distribute_render_3dmodels_addLights.py \
   --num_gpus 1 \
   --workers_per_gpu 2 \
-  --group_start 7850 \
-  --group_end 7900 \
+  --group_start 8850 \
+  --group_end 8900 \
   --num_views 30 \
   --num_test_views 50 \
   --num_white_envs 1 \
