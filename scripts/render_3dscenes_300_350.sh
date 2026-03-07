@@ -22,13 +22,14 @@ python scripts/distribute_render_3dscenes.py \
   --group_start 5300 \
   --group_end 5350 \
   --num_white_envs 1 \
-  --num_env_lights 3 \
-  --num_white_pls 3 \
+  --num_env_lights 1 \
+  --num_white_pls 1 \
   --num_rgb_pls 1 \
-  --num_multi_pls 0 \
-  --num_area_lights 0 \
+  --num_multi_pls 1 \
+  --num_area_lights 1 \
+  --num_combined_lights 4 \
   --model_lq_dir /projects/vig/Datasets/Polyhaven/polyhaven_models \
-  --output_dir ./output_scenes_dense \
+  --output_dir /projects/vig/Datasets/objaverse/hf-objaverse-v1/rendered_scenes_dense_expanded \
   --texture_dir /projects/vig/Datasets/Polyhaven/polyhaven_textures \
   --glb_list_path test_obj_curated.csv \
   --glbs_root_path /projects/vig/Datasets/objaverse/hf-objaverse-v1/glbs/ \
