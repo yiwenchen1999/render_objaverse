@@ -79,6 +79,45 @@ def gen_pt_traj_around_origin(seed, N, min_dist_to_origin, max_dist_to_origin, t
     return ret
 
 
+def gen_rotated_pts_around_z(seed, N, min_dist_to_origin, max_dist_to_origin,
+                              min_theta_in_degree, max_theta_in_degree, z_up=True) -> list:
+    """
+    Sample 1 random point around the origin, then rotate it N times evenly around
+    the Z-axis (up-axis) to produce N variations.
+
+    :param seed: random seed
+    :param N: number of variations (rotation steps)
+    :param min_dist_to_origin: minimum distance to the origin
+    :param max_dist_to_origin: maximum distance to the origin
+    :param min_theta_in_degree: minimum polar angle (from +Z) in degrees
+    :param max_theta_in_degree: maximum polar angle (from +Z) in degrees
+    :param z_up: if True, z is up; otherwise y is up
+    :return: list of N point positions, each a rotated copy of the base point
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    # Sample one base point
+    phi_base = 2 * math.pi * random.random()
+    theta = math.acos(2.0 * random.random() - 1.0)
+    while theta < min_theta_in_degree * math.pi / 180.0 or theta > max_theta_in_degree * math.pi / 180.0:
+        theta = math.acos(2.0 * random.random() - 1.0)
+    dist = min_dist_to_origin + random.random() * (max_dist_to_origin - min_dist_to_origin)
+
+    ret = []
+    for i in range(N):
+        phi = phi_base + 2 * math.pi * i / N
+        pt = [
+            dist * math.sin(theta) * math.cos(phi),
+            dist * math.sin(theta) * math.sin(phi),
+            dist * math.cos(theta),
+        ]
+        if not z_up:
+            pt = [pt[0], pt[2], pt[1]]
+        ret.append(pt)
+    return ret
+
+
 def gen_clustered_pts_around_origin(seed, N, 
                                     min_dist_to_origin, 
                                     max_dist_to_origin,
