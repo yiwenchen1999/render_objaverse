@@ -8,4 +8,4 @@
 #SBATCH --output=myjob.download_objaverse.out
 #SBATCH --error=myjob.download_objaverse.err
 
-python download.py --obj_list test_obj_curated.csv --end_uid 15000 --base_path /music-shared-disk/group/ct/yiwen/data/objaverse
+python download.py --obj_list test_obj.csv --end_uid 20000 --base_path /music-shared-disk/group/ct/yiwen/data/objaverse

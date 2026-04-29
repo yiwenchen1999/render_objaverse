@@ -16,13 +16,13 @@
 
 cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 
-python scripts/distribute_render_3dmodels_addLights.py \
+python scripts/distribute_render_3dmodels_dense_enhance.py \
   --num_gpus 1 \
   --workers_per_gpu 2 \
-  --group_start 18000 \
-  --group_end 18050 \
-  --num_views 30 \
-  --num_test_views 50 \
+  --group_start 13000 \
+  --group_end 13050 \
+  --num_views 4 \
+  --num_test_views 10 \
   --num_white_envs 1 \
   --num_env_lights 3 \
   --num_white_pls 1 \
