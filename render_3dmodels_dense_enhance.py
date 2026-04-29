@@ -48,7 +48,7 @@ def render_core(args: Options, groups_id = 0):
     from bpy_helper.io import render_depth_map, mat2list, array2list, render_normal_map, render_albedo_map, transform_normals_to_camera_space
     from bpy_helper.light import create_point_light, set_env_light, create_area_light
     from bpy_helper.material import create_white_diffuse_material, create_specular_ggx_material, clear_emission_and_alpha_nodes
-    from bpy_helper.random import gen_random_pts_around_origin, gen_pt_traj_around_origin
+    from bpy_helper.random import gen_random_pts_around_origin
     from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
 
@@ -148,6 +148,22 @@ def render_core(args: Options, groups_id = 0):
             random.uniform(float(bbox_min[1]), float(bbox_max[1])),
             random.uniform(float(bbox_min[2]), float(bbox_max[2])),
         ]
+
+    def interpolate_c2w_pose(c2w_start, c2w_end, t):
+        start_mat = Matrix(c2w_start)
+        end_mat = Matrix(c2w_end)
+
+        start_t = start_mat.to_translation()
+        end_t = end_mat.to_translation()
+        interp_t = start_t.lerp(end_t, t)
+
+        start_q = start_mat.to_3x3().to_quaternion()
+        end_q = end_mat.to_3x3().to_quaternion()
+        interp_q = start_q.slerp(end_q, t)
+
+        interp_mat = interp_q.to_matrix().to_4x4()
+        interp_mat.translation = interp_t
+        return interp_mat
     
     cameras = []
     cameras_test = []
@@ -185,17 +201,18 @@ def render_core(args: Options, groups_id = 0):
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
             min_dist_to_origin=0.8,
-            max_dist_to_origin=1.3,          # usually keep min=max for consistent radius
+            max_dist_to_origin=1.8,          # usually keep min=max for consistent radius
             min_theta_in_degree=0,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
             z_up=True
         )
-        eyes_traj = gen_pt_traj_around_origin(
+        eyes_traj_endpoints = gen_random_pts_around_origin(
             seed=seed_view,
-            N=args.num_test_views,
-            min_dist_to_origin=1.0,
-            max_dist_to_origin=1.0,
-            theta_in_degree=60,
+            N=2,
+            min_dist_to_origin=0.8,
+            max_dist_to_origin=1.8,
+            min_theta_in_degree=0,
+            max_theta_in_degree=100,
             z_up=True
         )
         
@@ -209,13 +226,22 @@ def render_core(args: Options, groups_id = 0):
             c2w = look_at_to_c2w(eye, target_position=target_position)
             cameras.append((eye_idx, c2w, fov))
 
-        for eye_idx, eye in enumerate(eyes_traj):
-            fov = scene_fov
-            radius = (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
-            eye = [x * radius for x in eye]
-            target_position = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
-            c2w = look_at_to_c2w(eye, target_position=target_position)
-            cameras_test.append((eye_idx, c2w, fov))
+        fov = scene_fov
+        radius = (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
+        start_eye = [x * radius for x in eyes_traj_endpoints[0]]
+        end_eye = [x * radius for x in eyes_traj_endpoints[1]]
+        start_target = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
+        end_target = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
+        start_c2w = look_at_to_c2w(start_eye, target_position=start_target)
+        end_c2w = look_at_to_c2w(end_eye, target_position=end_target)
+
+        if args.num_test_views <= 1:
+            cameras_test.append((0, Matrix(start_c2w), fov))
+        else:
+            for eye_idx in range(args.num_test_views):
+                t = eye_idx / (args.num_test_views - 1)
+                c2w_interp = interpolate_c2w_pose(start_c2w, end_c2w, t)
+                cameras_test.append((eye_idx, c2w_interp, fov))
     
     #& 2. start rendering
     # If we loaded existing cameras, we assume intrinsics might be done, but let's be careful.
