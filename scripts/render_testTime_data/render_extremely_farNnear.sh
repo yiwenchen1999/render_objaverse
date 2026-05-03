@@ -20,8 +20,10 @@ run_batch () {
   local min_dist=$1
   local max_dist=$2
   local out_dir=$3
+  local dataset_root=/projects/vig/Datasets/objaverse/hf-objaverse-v1
 
   echo "Running batch: ${out_dir} (min_dist=${min_dist}, max_dist=${max_dist})"
+  mkdir -p "${dataset_root}/${out_dir}"
   python scripts/distribute_render_3dmodels_addLights.py \
     --num_gpus 1 \
     --workers_per_gpu 2 \
