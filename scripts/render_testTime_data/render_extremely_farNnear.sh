@@ -27,13 +27,13 @@ run_batch () {
   python scripts/distribute_render_3dmodels_addLights.py \
     --num_gpus 1 \
     --workers_per_gpu 2 \
-    --group_start 13350 \
-    --group_end 13352 \
+    --group_start 13250 \
+    --group_end 13252 \
     --num_views 4 \
     --num_test_views 50 \
     --test_min_dist_to_origin "${min_dist}" \
     --test_max_dist_to_origin "${max_dist}" \
-    --num_white_envs 1 \
+    --num_white_envs 0 \
     --num_env_lights 1 \
     --num_white_pls 0 \
     --num_rgb_pls 0 \
