@@ -163,7 +163,7 @@ def render_core(args: Options, groups_id = 0):
 
         interp_mat = interp_q.to_matrix().to_4x4()
         interp_mat.translation = interp_t
-        return interp_mat
+        return np.array(interp_mat)
     
     cameras = []
     cameras_test = []
@@ -236,7 +236,7 @@ def render_core(args: Options, groups_id = 0):
         end_c2w = look_at_to_c2w(end_eye, target_position=end_target)
 
         if args.num_test_views <= 1:
-            cameras_test.append((0, Matrix(start_c2w), fov))
+            cameras_test.append((0, start_c2w, fov))
         else:
             for eye_idx in range(args.num_test_views):
                 t = eye_idx / (args.num_test_views - 1)

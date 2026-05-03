@@ -23,6 +23,8 @@ class Options:
     output_dir: str = './output'  # Output directory
     num_views: int = 200  # Number of views
     num_test_views: int = 100  # Number of test views (trajectory views)
+    test_min_dist_to_origin: float = 1.0  # Min trajectory radius for test views
+    test_max_dist_to_origin: float = 1.0  # Max trajectory radius for test views
     num_white_pls: int = 0  # Number of white point lighting
     num_rgb_pls: int = 0  # Number of RGB point lighting
     num_multi_pls: int = 0  # Number of multi point lighting
@@ -164,8 +166,8 @@ def render_core(args: Options, groups_id = 0):
         eyes_traj = gen_pt_traj_around_origin(
             seed=seed_view,
             N=args.num_test_views,
-            min_dist_to_origin=1.0,
-            max_dist_to_origin=1.0,
+            min_dist_to_origin=args.test_min_dist_to_origin,
+            max_dist_to_origin=args.test_max_dist_to_origin,
             theta_in_degree=60,
             z_up=True
         )

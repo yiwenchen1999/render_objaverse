@@ -41,6 +41,8 @@ def worker(
             f"--group_start {model_idx} --group_end {model_idx + 1} "
             f"--num_views {args.num_views} "
             f"--num_test_views {args.num_test_views} "
+            f"--test_min_dist_to_origin {args.test_min_dist_to_origin} "
+            f"--test_max_dist_to_origin {args.test_max_dist_to_origin} "
             f"--num_white_envs {args.num_white_envs} "
             f"--num_env_lights {args.num_env_lights} "
             f"--num_white_pls {args.num_white_pls} "
@@ -72,6 +74,8 @@ def main():
     parser.add_argument("--group_end", type=int, default=50, help="End model index")
     parser.add_argument("--num_views", type=int, default=30, help="Number of training views")
     parser.add_argument("--num_test_views", type=int, default=50, help="Number of test views")
+    parser.add_argument("--test_min_dist_to_origin", type=float, default=1.0, help="Min radius for test trajectory")
+    parser.add_argument("--test_max_dist_to_origin", type=float, default=1.0, help="Max radius for test trajectory")
     parser.add_argument("--num_white_envs", type=int, default=1)
     parser.add_argument("--num_env_lights", type=int, default=0)
     parser.add_argument("--num_white_pls", type=int, default=3)
