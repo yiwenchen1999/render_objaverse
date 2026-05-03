@@ -33,7 +33,7 @@ run_batch () {
     --num_test_views 50 \
     --test_min_dist_to_origin "${min_dist}" \
     --test_max_dist_to_origin "${max_dist}" \
-    --num_white_envs 0 \
+    --num_white_envs 1 \
     --num_env_lights 1 \
     --num_white_pls 0 \
     --num_rgb_pls 0 \

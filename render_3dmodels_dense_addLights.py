@@ -187,6 +187,31 @@ def render_core(args: Options, groups_id = 0):
             eye = [x * radius for x in eye]
             c2w = look_at_to_c2w(eye)
             cameras_test.append((eye_idx, c2w, fov))
+
+        # Persist camera definitions before any lighting pass so cameras.json
+        # exists even when white_env rendering is disabled.
+        train_view_path = os.path.join(res_dir, 'train')
+        test_view_path = os.path.join(res_dir, 'test')
+        os.makedirs(train_view_path, exist_ok=True)
+        os.makedirs(test_view_path, exist_ok=True)
+        train_cam_entries = [
+            {
+                'eye_idx': eye_idx,
+                'c2w': mat2list(c2w),
+                'fov': fov,
+            }
+            for eye_idx, c2w, fov in cameras
+        ]
+        test_cam_entries = [
+            {
+                'eye_idx': eye_idx,
+                'c2w': mat2list(c2w),
+                'fov': fov,
+            }
+            for eye_idx, c2w, fov in cameras_test
+        ]
+        json.dump(train_cam_entries, open(train_cam_path, 'w'), indent=4)
+        json.dump(test_cam_entries, open(test_cam_path, 'w'), indent=4)
     
     #& 2. start rendering
     # If we loaded existing cameras, we assume intrinsics might be done, but let's be careful.
