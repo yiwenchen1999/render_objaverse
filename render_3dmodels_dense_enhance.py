@@ -97,12 +97,14 @@ def render_core(args: Options, groups_id = 0):
     scale, offset = normalize_scene(use_bounding_sphere=True)
     # normalize_scene scales meshes to a bounding sphere radius of 0.5 by default.
     # Apply an additional random scale so final object radius is sampled in [0.1, 5.0].
-    sampled_object_radius = random.uniform(0.1, 0.2)
+    sampled_object_radius = random.uniform(0.1, 5.0)
     post_normalize_scale = sampled_object_radius / 0.5
     for obj in bpy.context.scene.objects:
         if obj.type == 'MESH':
             obj.scale = [s * post_normalize_scale for s in obj.scale]
     bpy.context.view_layer.update()
+    # Recenter after post scaling: if mesh origins aren't centered, scaling can shift the bbox center.
+    _recenter_scale, recenter_offset = normalize_scene(scale=1.0, offset=None, use_bounding_sphere=False)
     clear_emission_and_alpha_nodes()
 
     # Configure blender
@@ -124,16 +126,7 @@ def render_core(args: Options, groups_id = 0):
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
 
-    json.dump(
-        {
-            'scale': scale,
-            'offset': array2list(offset),
-            'sampled_object_radius': sampled_object_radius,
-            'post_normalize_scale': post_normalize_scale,
-        },
-        open(f'{res_dir}/normalize.json', 'w'),
-        indent=4
-    )
+    # normalize.json is written after bbox is computed below (includes bbox-derived radius and camera ranges).
 
     #* 1.2 prepare the cameras
     # Check if cameras.json exists in train and test folders
@@ -159,7 +152,7 @@ def render_core(args: Options, groups_id = 0):
 
         return bbox_min, bbox_max
 
-    # Use the *actual* bbox after scaling to define a robust scene radius.
+    # Use the *actual* bbox after scaling+recenter to define a robust scene radius.
     scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
     scene_center = (scene_bbox_min + scene_bbox_max) * 0.5
     scene_radius = float(0.5 * np.linalg.norm(scene_bbox_max - scene_bbox_min))  # half diagonal
@@ -172,6 +165,7 @@ def render_core(args: Options, groups_id = 0):
             'offset': array2list(offset),
             'sampled_object_radius': sampled_object_radius,
             'post_normalize_scale': post_normalize_scale,
+            'recenter_offset': array2list(recenter_offset),
             'scene_bbox_min': array2list(scene_bbox_min),
             'scene_bbox_max': array2list(scene_bbox_max),
             'scene_center': array2list(scene_center),
