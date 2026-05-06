@@ -20,7 +20,7 @@ python scripts/distribute_render_3dmodels_dense_enhance.py \
   --num_gpus 1 \
   --workers_per_gpu 2 \
   --group_start 18200 \
-  --group_end 18250 \
+  --group_end 18202 \
   --num_views 1 \
   --num_test_views 1 \
   --dynamic_lighting_counts \
