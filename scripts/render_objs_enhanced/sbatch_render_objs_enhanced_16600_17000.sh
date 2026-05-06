@@ -4,6 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 JOB_SCRIPTS=(
+  "${SCRIPT_DIR}/render_objs_enhanced_16000_16100.sh"
+  "${SCRIPT_DIR}/render_objs_enhanced_16100_16200.sh"
+  "${SCRIPT_DIR}/render_objs_enhanced_16200_16300.sh"
+  "${SCRIPT_DIR}/render_objs_enhanced_16300_16400.sh"
+  "${SCRIPT_DIR}/render_objs_enhanced_16400_16500.sh"
+  "${SCRIPT_DIR}/render_objs_enhanced_16500_16600.sh"
   "${SCRIPT_DIR}/render_objs_enhanced_16600_16700.sh"
   "${SCRIPT_DIR}/render_objs_enhanced_16700_16800.sh"
   "${SCRIPT_DIR}/render_objs_enhanced_16800_16900.sh"
