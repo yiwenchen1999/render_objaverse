@@ -31,7 +31,7 @@ python scripts/distribute_render_3dmodels_dense_enhance.py \
   --enable_combined \
   --combined_probability 0.20 \
   --lighting_seed "${LIGHTING_SEED}" \
-  --rho_min 0.3 \
+  --rho_min 0.5 \
   --rho_max 1.1 \
   --rendered_dir_name rendered_objs_enhanced \
   --csv_path test_obj.csv \
