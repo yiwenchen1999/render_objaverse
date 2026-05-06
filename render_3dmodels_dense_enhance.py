@@ -220,8 +220,8 @@ def render_core(args: Options, groups_id = 0):
     if not loaded_existing_cameras:
         scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
         scene_fov = random.uniform(20.0, 75.0)
-        rho_min = 1.0
-        rho_max = 1.0
+        rho_min = 0.5
+        rho_max = 0.5
         fov_rad = scene_fov / 2.0 * (math.pi / 180.0)
         # d = R / (rho * tan(fov/2)); rho large -> closer camera (smaller d)
         min_eye_dist = sampled_object_radius / (rho_max * math.tan(fov_rad))
