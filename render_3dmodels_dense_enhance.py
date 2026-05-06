@@ -95,6 +95,14 @@ def render_core(args: Options, groups_id = 0):
     with stdout_redirected():
         import_3d_model(file_path)
     scale, offset = normalize_scene(use_bounding_sphere=True)
+    # normalize_scene scales meshes to a bounding sphere radius of 0.5 by default.
+    # Apply an additional random scale so final object radius is sampled in [0.1, 5.0].
+    sampled_object_radius = random.uniform(0.1, 5.0)
+    post_normalize_scale = sampled_object_radius / 0.5
+    for obj in bpy.context.scene.objects:
+        if obj.type == 'MESH':
+            obj.scale = [s * post_normalize_scale for s in obj.scale]
+    bpy.context.view_layer.update()
     clear_emission_and_alpha_nodes()
 
     # Configure blender
@@ -116,7 +124,16 @@ def render_core(args: Options, groups_id = 0):
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
 
-    json.dump({'scale': scale, 'offset': array2list(offset)}, open(f'{res_dir}/normalize.json', 'w'), indent=4)
+    json.dump(
+        {
+            'scale': scale,
+            'offset': array2list(offset),
+            'sampled_object_radius': sampled_object_radius,
+            'post_normalize_scale': post_normalize_scale,
+        },
+        open(f'{res_dir}/normalize.json', 'w'),
+        indent=4
+    )
 
     #* 1.2 prepare the cameras
     # Check if cameras.json exists in train and test folders
@@ -197,11 +214,13 @@ def render_core(args: Options, groups_id = 0):
         scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
         scene_fov = random.uniform(20.0, 75.0)
 
+        min_eye_dist = 1.5 * sampled_object_radius
+        max_eye_dist = 10.0 * sampled_object_radius
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
-            min_dist_to_origin=0.8,
-            max_dist_to_origin=1.8,          # usually keep min=max for consistent radius
+            min_dist_to_origin=min_eye_dist,
+            max_dist_to_origin=max_eye_dist,  # dynamic: based on sampled object radius
             min_theta_in_degree=0,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
             z_up=True
@@ -209,8 +228,8 @@ def render_core(args: Options, groups_id = 0):
         eyes_traj_endpoints = gen_random_pts_around_origin(
             seed=seed_view,
             N=2,
-            min_dist_to_origin=0.8,
-            max_dist_to_origin=1.8,
+            min_dist_to_origin=min_eye_dist,
+            max_dist_to_origin=max_eye_dist,
             min_theta_in_degree=0,
             max_theta_in_degree=100,
             z_up=True
@@ -220,14 +239,14 @@ def render_core(args: Options, groups_id = 0):
         cameras_test = []
         for eye_idx, eye in enumerate(eyes):
             fov = scene_fov
-            radius = (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
+            radius = (sampled_object_radius / math.tanh(fov / 2. * (math.pi / 180.)))
             eye = [x * radius for x in eye]
             target_position = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
             c2w = look_at_to_c2w(eye, target_position=target_position)
             cameras.append((eye_idx, c2w, fov))
 
         fov = scene_fov
-        radius = (0.5 / math.tanh(fov / 2. * (math.pi / 180.)))
+        radius = (sampled_object_radius / math.tanh(fov / 2. * (math.pi / 180.)))
         start_eye = [x * radius for x in eyes_traj_endpoints[0]]
         end_eye = [x * radius for x in eyes_traj_endpoints[1]]
         start_target = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
@@ -405,12 +424,15 @@ def render_core(args: Options, groups_id = 0):
 
         intrinsics_saved = True
 
+    light_min_dist = 6.0 * sampled_object_radius
+    light_max_dist = 20.0 * sampled_object_radius
+
     #* 2.2 render the white point lighting
     white_pls = gen_random_pts_around_origin(
         seed=seed_white_pl,
         N=args.num_white_pls,
-        min_dist_to_origin=3.5,
-        max_dist_to_origin=5.0,
+        min_dist_to_origin=light_min_dist,
+        max_dist_to_origin=light_max_dist,
         min_theta_in_degree=0,
         max_theta_in_degree=85
     )
@@ -465,8 +487,8 @@ def render_core(args: Options, groups_id = 0):
     rgb_pls = gen_random_pts_around_origin(
         seed=seed_rgb_pl,
         N=args.num_rgb_pls,
-        min_dist_to_origin=4.0,
-        max_dist_to_origin=5.0,
+        min_dist_to_origin=light_min_dist,
+        max_dist_to_origin=light_max_dist,
         min_theta_in_degree=0,
         max_theta_in_degree=60
     )
@@ -523,8 +545,8 @@ def render_core(args: Options, groups_id = 0):
     multi_pls = gen_random_pts_around_origin(
         seed=seed_multi_pl,
         N=args.num_multi_pls * args.max_pl_num,
-        min_dist_to_origin=3.0,
-        max_dist_to_origin=5.0,
+        min_dist_to_origin=light_min_dist,
+        max_dist_to_origin=light_max_dist,
         min_theta_in_degree=0,
         max_theta_in_degree=85
     )
@@ -639,8 +661,8 @@ def render_core(args: Options, groups_id = 0):
     area_light_positions = gen_random_pts_around_origin(
         seed=seed_area,
         N=args.num_area_lights,
-        min_dist_to_origin=3.0,
-        max_dist_to_origin=6.0,
+        min_dist_to_origin=light_min_dist,
+        max_dist_to_origin=light_max_dist,
         min_theta_in_degree=0,
         max_theta_in_degree=85
     )
@@ -705,16 +727,16 @@ def render_core(args: Options, groups_id = 0):
     combined_pls = gen_random_pts_around_origin(
         seed=seed_combined,
         N=num_point_lights,
-        min_dist_to_origin=3.5,
-        max_dist_to_origin=5.0,
+        min_dist_to_origin=light_min_dist,
+        max_dist_to_origin=light_max_dist,
         min_theta_in_degree=0,
         max_theta_in_degree=85
     )
     area_light_positions = gen_random_pts_around_origin(
         seed=seed_combined + 100 if seed_combined is not None else None,
         N=1,
-        min_dist_to_origin=3.0,
-        max_dist_to_origin=6.0,
+        min_dist_to_origin=light_min_dist,
+        max_dist_to_origin=light_max_dist,
         min_theta_in_degree=0,
         max_theta_in_degree=85
     )
