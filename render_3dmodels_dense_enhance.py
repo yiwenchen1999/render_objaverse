@@ -214,8 +214,8 @@ def render_core(args: Options, groups_id = 0):
         scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
         scene_fov = random.uniform(20.0, 75.0)
 
-        min_eye_dist = 1.0 * sampled_object_radius
-        max_eye_dist = 1.0 * sampled_object_radius
+        min_eye_dist = 0.8 * sampled_object_radius
+        max_eye_dist = 2.0 * sampled_object_radius
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
