@@ -17,8 +17,8 @@ cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 MODEL_IDX=18200
 PROJ_ROOT=/projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 
-RHO_MINS=(0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2)
-RHO_MAXS=(0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3)
+RHO_MINS=(0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9)
+RHO_MAXS=(0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
 
 for i in "${!RHO_MINS[@]}"; do
   RMIN="${RHO_MINS[$i]}"
