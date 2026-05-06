@@ -97,7 +97,7 @@ def render_core(args: Options, groups_id = 0):
     scale, offset = normalize_scene(use_bounding_sphere=True)
     # normalize_scene scales meshes to a bounding sphere radius of 0.5 by default.
     # Apply an additional random scale so final object radius is sampled in [0.1, 5.0].
-    sampled_object_radius = random.uniform(0.1, 0.2)
+    sampled_object_radius = random.uniform(0.5, 0.6)
     post_normalize_scale = sampled_object_radius / 0.5
     for obj in bpy.context.scene.objects:
         if obj.type == 'MESH':
