@@ -241,12 +241,21 @@ def render_core(args: Options, groups_id = 0):
 
     if not loaded_existing_cameras:
         scene_fov = random.uniform(20.0, 75.0)
-        rho_min = 0.22
-        rho_max = 0.40
+        rho_min = 0.8
+        rho_max = 1.0
         fov_rad = scene_fov / 2.0 * (math.pi / 180.0)
         # d = R / (rho * tan(fov/2)); rho large -> closer camera (smaller d)
         min_eye_dist = scene_radius / (rho_max * math.tan(fov_rad))
         max_eye_dist = scene_radius / (rho_min * math.tan(fov_rad))
+
+        # Record camera distance range for reproducibility/debugging.
+        try:
+            _norm_path = f'{res_dir}/normalize.json'
+            _norm = json.load(open(_norm_path, 'r'))
+            _norm.update({'d_min': float(min_eye_dist), 'd_max': float(max_eye_dist), 'rho_min': rho_min, 'rho_max': rho_max, 'scene_fov': float(scene_fov)})
+            json.dump(_norm, open(_norm_path, 'w'), indent=4)
+        except Exception as _e:
+            print(f"Warning: failed to update normalize.json with d_min/d_max: {_e}")
 
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
