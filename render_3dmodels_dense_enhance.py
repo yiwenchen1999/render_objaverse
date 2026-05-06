@@ -97,7 +97,7 @@ def render_core(args: Options, groups_id = 0):
     scale, offset = normalize_scene(use_bounding_sphere=True)
     # normalize_scene scales meshes to a bounding sphere radius of 0.5 by default.
     # Apply an additional random scale so final object radius is sampled in [0.1, 5.0].
-    sampled_object_radius = random.uniform(0.5, 0.6)
+    sampled_object_radius = random.uniform(0.1, 0.2)
     post_normalize_scale = sampled_object_radius / 0.5
     for obj in bpy.context.scene.objects:
         if obj.type == 'MESH':
@@ -159,6 +159,28 @@ def render_core(args: Options, groups_id = 0):
 
         return bbox_min, bbox_max
 
+    # Use the *actual* bbox after scaling to define a robust scene radius.
+    scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
+    scene_center = (scene_bbox_min + scene_bbox_max) * 0.5
+    scene_radius = float(0.5 * np.linalg.norm(scene_bbox_max - scene_bbox_min))  # half diagonal
+    scene_radius = max(scene_radius, 1e-4)
+
+    # Update normalize.json with bbox-derived scale info (overwrite earlier minimal dump).
+    json.dump(
+        {
+            'scale': scale,
+            'offset': array2list(offset),
+            'sampled_object_radius': sampled_object_radius,
+            'post_normalize_scale': post_normalize_scale,
+            'scene_bbox_min': array2list(scene_bbox_min),
+            'scene_bbox_max': array2list(scene_bbox_max),
+            'scene_center': array2list(scene_center),
+            'scene_radius': scene_radius,
+        },
+        open(f'{res_dir}/normalize.json', 'w'),
+        indent=4
+    )
+
     def sample_target_in_bbox(bbox_min, bbox_max):
         return [
             random.uniform(float(bbox_min[0]), float(bbox_max[0])),
@@ -218,14 +240,13 @@ def render_core(args: Options, groups_id = 0):
             loaded_existing_cameras = False
 
     if not loaded_existing_cameras:
-        scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
         scene_fov = random.uniform(20.0, 75.0)
-        rho_min = 0.5
-        rho_max = 0.5
+        rho_min = 0.22
+        rho_max = 0.40
         fov_rad = scene_fov / 2.0 * (math.pi / 180.0)
         # d = R / (rho * tan(fov/2)); rho large -> closer camera (smaller d)
-        min_eye_dist = sampled_object_radius / (rho_max * math.tan(fov_rad))
-        max_eye_dist = sampled_object_radius / (rho_min * math.tan(fov_rad))
+        min_eye_dist = scene_radius / (rho_max * math.tan(fov_rad))
+        max_eye_dist = scene_radius / (rho_min * math.tan(fov_rad))
 
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
@@ -441,8 +462,8 @@ def render_core(args: Options, groups_id = 0):
 
         intrinsics_saved = True
 
-    light_min_dist = 6.0 * sampled_object_radius
-    light_max_dist = 20.0 * sampled_object_radius
+    light_min_dist = 6.0 * scene_radius
+    light_max_dist = 20.0 * scene_radius
 
     #* 2.2 render the white point lighting
     white_pls = gen_random_pts_around_origin(
