@@ -181,6 +181,13 @@ def render_core(args: Options, groups_id = 0):
         interp_mat = interp_q.to_matrix().to_4x4()
         interp_mat.translation = interp_t
         return np.array(interp_mat)
+
+    def normalize_direction(vec):
+        vec_np = np.array(vec, dtype=np.float32)
+        norm = float(np.linalg.norm(vec_np))
+        if norm < 1e-8:
+            return np.array([0.0, 0.0, 1.0], dtype=np.float32)
+        return vec_np / norm
     
     cameras = []
     cameras_test = []
@@ -213,14 +220,18 @@ def render_core(args: Options, groups_id = 0):
     if not loaded_existing_cameras:
         scene_bbox_min, scene_bbox_max = get_scene_bbox_world()
         scene_fov = random.uniform(20.0, 75.0)
+        rho_min = 0.22
+        rho_max = 0.40
+        fov_rad = scene_fov / 2.0 * (math.pi / 180.0)
+        # d = R / (rho * tan(fov/2)); rho large -> closer camera (smaller d)
+        min_eye_dist = sampled_object_radius / (rho_max * math.tan(fov_rad))
+        max_eye_dist = sampled_object_radius / (rho_min * math.tan(fov_rad))
 
-        min_eye_dist = 0.8 * sampled_object_radius
-        max_eye_dist = 2.0 * sampled_object_radius
         eyes = gen_random_pts_around_origin(
             seed=seed_view,
             N=args.num_views,                # set to a large value (e.g. 100, 200, 400)
             min_dist_to_origin=min_eye_dist,
-            max_dist_to_origin=max_eye_dist,  # dynamic: based on sampled object radius
+            max_dist_to_origin=max_eye_dist,
             min_theta_in_degree=0,           # 0 for full sphere, 10/20 for hemisphere
             max_theta_in_degree=100,         # 90 or 70 for upper hemisphere only
             z_up=True
@@ -239,16 +250,22 @@ def render_core(args: Options, groups_id = 0):
         cameras_test = []
         for eye_idx, eye in enumerate(eyes):
             fov = scene_fov
-            radius = (sampled_object_radius / math.tanh(fov / 2. * (math.pi / 180.)))
-            eye = [x * radius for x in eye]
+            eye = eye.tolist() if isinstance(eye, np.ndarray) else list(eye)
             target_position = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
             c2w = look_at_to_c2w(eye, target_position=target_position)
             cameras.append((eye_idx, c2w, fov))
 
         fov = scene_fov
-        radius = (sampled_object_radius / math.tanh(fov / 2. * (math.pi / 180.)))
-        start_eye = [x * radius for x in eyes_traj_endpoints[0]]
-        end_eye = [x * radius for x in eyes_traj_endpoints[1]]
+        start_eye = (
+            eyes_traj_endpoints[0].tolist()
+            if isinstance(eyes_traj_endpoints[0], np.ndarray)
+            else list(eyes_traj_endpoints[0])
+        )
+        end_eye = (
+            eyes_traj_endpoints[1].tolist()
+            if isinstance(eyes_traj_endpoints[1], np.ndarray)
+            else list(eyes_traj_endpoints[1])
+        )
         start_target = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
         end_target = sample_target_in_bbox(scene_bbox_min, scene_bbox_max)
         start_c2w = look_at_to_c2w(start_eye, target_position=start_target)

@@ -38,7 +38,7 @@ def sample_light_config(model_idx: int, args: argparse.Namespace) -> dict:
         }
     else:
         env_total = rng.randint(2, total_lights)  # enforce num_white_envs + num_env_lights > 1
-        num_white_envs = rng.randint(1, env_total - 1)
+        num_white_envs = rng.randint(0, 1)
         num_env_lights = env_total - num_white_envs
 
         remaining = total_lights - env_total
@@ -64,6 +64,7 @@ def sample_light_config(model_idx: int, args: argparse.Namespace) -> dict:
         + cfg["num_area_lights"]
     )
     assert cfg["num_combined_lights"] in (0, 4)
+    assert cfg["num_white_envs"] <= 1
     assert total == total_lights
     assert (cfg["num_white_envs"] + cfg["num_env_lights"]) > 1
     return cfg
