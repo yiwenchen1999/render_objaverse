@@ -38,6 +38,8 @@ class Options:
     save_intrinsics: bool = True  # Whether to save intrinsics for each view
     csv_path: str = "test_obj.csv"  # Path to CSV file containing model indices and UIDs
     rendered_dir_name: str = "rendered_dense"  # Name of the rendered output directory (replaces 'glbs' in dataset path)
+    rho_min: float = 0.8  # Min framing coefficient for camera distance
+    rho_max: float = 1.0  # Max framing coefficient for camera distance
 
 
 def render_core(args: Options, groups_id = 0):
@@ -235,8 +237,12 @@ def render_core(args: Options, groups_id = 0):
 
     if not loaded_existing_cameras:
         scene_fov = random.uniform(20.0, 75.0)
-        rho_min = 0.8
-        rho_max = 1.0
+        rho_min = args.rho_min
+        rho_max = args.rho_max
+        if rho_min <= 0 or rho_max <= 0:
+            raise ValueError(f"rho_min/rho_max must be positive, got {rho_min}, {rho_max}")
+        if rho_min > rho_max:
+            raise ValueError(f"rho_min must be <= rho_max, got {rho_min} > {rho_max}")
         fov_rad = scene_fov / 2.0 * (math.pi / 180.0)
         # d = R / (rho * tan(fov/2)); rho large -> closer camera (smaller d)
         min_eye_dist = scene_radius / (rho_max * math.tan(fov_rad))

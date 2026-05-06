@@ -112,6 +112,8 @@ def worker(
             f"--num_multi_pls {light_cfg['num_multi_pls']} "
             f"--num_area_lights {light_cfg['num_area_lights']} "
             f"--num_combined_lights {light_cfg['num_combined_lights']} "
+            f"--rho_min {args.rho_min} "
+            f"--rho_max {args.rho_max} "
             f"--rendered_dir_name {args.rendered_dir_name} "
             f"--csv_path {args.csv_path}"
         )
@@ -149,6 +151,8 @@ def main():
     parser.add_argument("--enable_combined", action="store_true")
     parser.add_argument("--combined_probability", type=float, default=0.5)
     parser.add_argument("--lighting_seed", type=int, default=0)
+    parser.add_argument("--rho_min", type=float, default=0.8)
+    parser.add_argument("--rho_max", type=float, default=1.0)
     parser.add_argument("--rendered_dir_name", type=str, default="rendered_dense_enhance")
     parser.add_argument("--csv_path", type=str, default="test_obj.csv")
     parser.add_argument(

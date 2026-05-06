@@ -21,8 +21,8 @@ python scripts/distribute_render_3dmodels_dense_enhance.py \
   --workers_per_gpu 2 \
   --group_start 18200 \
   --group_end 18250 \
-  --num_views 30 \
-  --num_test_views 50 \
+  --num_views 1 \
+  --num_test_views 1 \
   --dynamic_lighting_counts \
   --enable_combined \
   --combined_probability 0.25 \
