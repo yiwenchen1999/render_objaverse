@@ -19,8 +19,8 @@ cd /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 python scripts/distribute_render_3dmodels_dense_enhance.py \
   --num_gpus 1 \
   --workers_per_gpu 2 \
-  --group_start 18100 \
-  --group_end 18150 \
+  --group_start 18200 \
+  --group_end 18250 \
   --num_views 30 \
   --num_test_views 50 \
   --dynamic_lighting_counts \
