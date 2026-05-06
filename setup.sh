@@ -27,4 +27,4 @@ python render_3dscenes_dense.py \
     --model_lq_dir /projects/vig/Datasets/Polyhaven/polyhaven_models \
     --output_dir ./output_scenes_dense
 
-ps ux | egrep 'render_3dmodels_dense_addLights' | grep -v grep
+ps ux | egrep 'render_3dmodels_dense_enhance' | grep -v grep
