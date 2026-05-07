@@ -15,6 +15,6 @@ GROUP_START=16700
 GROUP_END=16800
 LIGHTING_SEED=$((2021 + GROUP_START))
 
-python scripts/distribute_render_3dmodels_dense_enhance.py   --num_gpus 1   --workers_per_gpu 2   --group_start "${GROUP_START}"   --group_end "${GROUP_END}"   --num_views 30   --num_test_views 50   --dynamic_lighting_counts   --enable_combined   --combined_probability 0.20   --lighting_seed "${LIGHTING_SEED}"   --rho_min 0.5   --rho_max 1.1   --rendered_dir_name rendered_objs_enhanced   --csv_path test_obj.csv   --proj_root /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
+python scripts/distribute_render_3dmodels_dense_enhance.py   --num_gpus 1   --workers_per_gpu 4   --group_start "${GROUP_START}"   --group_end "${GROUP_END}"   --num_views 30   --num_test_views 50   --dynamic_lighting_counts   --enable_combined   --combined_probability 0.20   --lighting_seed "${LIGHTING_SEED}"   --rho_min 0.5   --rho_max 1.1   --rendered_dir_name rendered_objs_enhanced   --csv_path test_obj.csv   --proj_root /projects/vig/yiwenc/ResearchProjects/lightingDiffusion/3dgs/render_objaverse
 
 echo "Done."
