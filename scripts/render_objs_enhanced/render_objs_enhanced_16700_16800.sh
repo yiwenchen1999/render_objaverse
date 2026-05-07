@@ -5,7 +5,7 @@
 #SBATCH --job-name=render_models_dense_dist_16700_16800
 #SBATCH --mem=32
 #SBATCH --ntasks=8
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h200:1
 #SBATCH --output=myjob.render_models_dense_dist_16700_16800.out
 #SBATCH --error=myjob.render_models_dense_dist_16700_16800.err
 
