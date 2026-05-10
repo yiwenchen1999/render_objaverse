@@ -106,23 +106,95 @@ def _required_paths(iter_dir: Path) -> List[Path]:
     return req
 
 
-def _resolve_env_pair(iter_dir: Path, view_idx: int) -> Tuple[Path, Path]:
-    hdr_candidates = [
-        iter_dir / "context_envhdr" / f"ldr_view_{view_idx:02d}.png",
-        iter_dir / f"context_envhdr_view_{view_idx:02d}.png",
-    ]
-    ldr_candidates = [
-        iter_dir / "context_envldr" / f"ldr_view_{view_idx:02d}.png",
-        iter_dir / f"context_envldr_view_{view_idx:02d}.png",
-    ]
+def _view_match_score(path: Path, view_idx: int) -> int:
+    """
+    Heuristic score for mapping a file path to a desired view index.
+    Higher score means better match.
+    """
+    s = str(path).lower()
+    idx2 = f"{view_idx:02d}"
+    score = 0
 
-    hdr_path = next((p for p in hdr_candidates if p.exists()), None)
-    ldr_path = next((p for p in ldr_candidates if p.exists()), None)
-    if hdr_path is None or ldr_path is None:
+    if f"ldr_view_{idx2}" in s:
+        score += 120
+    if f"context_view_{idx2}" in s or f"camera_view_{idx2}" in s:
+        score += 110
+    if f"view_{idx2}" in s:
+        score += 100
+    if f"view{idx2}" in s:
+        score += 90
+    if f"_{idx2}." in s or f"/{idx2}." in s:
+        score += 70
+    if s.endswith(f"{idx2}.png"):
+        score += 60
+
+    # Light fallback when naming is irregular but still contains the index.
+    if idx2 in path.stem:
+        score += 20
+
+    # Penalize mismatched explicit view tags to avoid picking view_02 for view_01.
+    other_idx2 = f"{2 if view_idx == 1 else 1:02d}"
+    if f"view_{other_idx2}" in s or f"ldr_view_{other_idx2}" in s:
+        score -= 120
+
+    return score
+
+
+def _collect_env_files(iter_dir: Path, token: str) -> List[Path]:
+    """
+    Collect env files recursively (PNG/JPG/JPEG), filtering by token in path.
+    token is expected to be 'envhdr' or 'envldr'.
+    """
+    image_exts = {".png", ".jpg", ".jpeg"}
+    out: List[Path] = []
+    for p in iter_dir.rglob("*"):
+        if not p.is_file():
+            continue
+        if p.suffix.lower() not in image_exts:
+            continue
+        s = str(p).lower()
+        if token in s:
+            out.append(p)
+    return sorted(out)
+
+
+def _pick_env_file(iter_dir: Path, token: str, view_idx: int) -> Path:
+    # First: explicit conventional candidates.
+    explicit_candidates = [
+        iter_dir / f"context_{token}" / f"ldr_view_{view_idx:02d}.png",
+        iter_dir / f"context_{token}" / f"view_{view_idx:02d}.png",
+        iter_dir / f"context_{token}" / f"{view_idx:02d}.png",
+        iter_dir / f"context_{token}_view_{view_idx:02d}.png",
+    ]
+    for p in explicit_candidates:
+        if p.exists():
+            return p
+
+    # Second: recursive fuzzy match against all env files.
+    all_candidates = _collect_env_files(iter_dir, token)
+    if not all_candidates:
         raise FileNotFoundError(
-            f"Cannot find env pair for view_{view_idx:02d} in {iter_dir}. "
-            f"Tried hdr={hdr_candidates}, ldr={ldr_candidates}"
+            f"Cannot find any '{token}' image under {iter_dir}. "
+            f"Expected names like context_{token}/ldr_view_01.png or context_{token}_view_01.png"
         )
+
+    scored = sorted(
+        ((c, _view_match_score(c, view_idx)) for c in all_candidates),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    best_path, best_score = scored[0]
+    if best_score <= 0:
+        raise FileNotFoundError(
+            f"Cannot confidently match '{token}' for view_{view_idx:02d} in {iter_dir}. "
+            f"Available candidates: {[str(x) for x in all_candidates]}"
+        )
+    return best_path
+
+
+def _resolve_env_pair(iter_dir: Path, view_idx: int) -> Tuple[Path, Path]:
+    hdr_path = _pick_env_file(iter_dir, "envhdr", view_idx)
+    ldr_path = _pick_env_file(iter_dir, "envldr", view_idx)
     return hdr_path, ldr_path
 
 
