@@ -23,9 +23,6 @@ EXTRA_ARGS=()
 if [ -n "${SCENE_FILTER:-}" ]; then
   EXTRA_ARGS+=(--scene_filter "${SCENE_FILTER}")
 fi
-if [ "${OVERWRITE:-0}" = "1" ]; then
-  EXTRA_ARGS+=(--overwrite)
-fi
 
 echo "[render_sf3d_mesh] data_root=${DATA_ROOT} iter_subdir=${ITER_SUBDIR}"
 

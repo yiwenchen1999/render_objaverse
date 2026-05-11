@@ -7,16 +7,19 @@ mesh predictions (``mesh_00.glb``, ``mesh_01.glb``) and an iteration subdir
 
 For each mesh we:
     1. Reconstruct the HDR envmap from the (hdr_png, ldr_png) pair (mirroring
-       ``dataset_polyhaven.reconstruct_hdr_from_pngs``) and dump it as ``.exr``.
+       ``dataset_polyhaven.reconstruct_hdr_from_pngs``) and stage it as a
+       temporary ``.exr`` so Blender can load it; the temp file is removed
+       once the render is done.
     2. Load the glb as-is (no normalize / scale).
     3. Place a Cycles camera at ``(0, -1, 0)`` looking at the origin with up=z.
     4. Render at the requested resolution and write back to the scene's iter
-       subdir as ``rerender_view_{00,01}.png``.
+       subdir as ``rerender_view_{00,01}.png`` (always overwrites).
 """
 
 import glob
 import os
 import sys
+import tempfile
 import traceback
 from dataclasses import dataclass
 from typing import Optional
@@ -43,7 +46,6 @@ class Options:
     cycles_samples: int = 128
     env_rotation_z: float = 0.0
     env_strength: float = 1.0
-    overwrite: bool = False
     scene_filter: Optional[str] = None
     output_prefix: str = "rerender_view"
 
@@ -102,9 +104,11 @@ def write_exr(path: str, hdr: np.ndarray) -> None:
 
 
 def prepare_envmap_exr(iter_dir: str, view_idx: int) -> str:
-    """Reconstruct an HDR envmap and dump it as .exr inside ``iter_dir``.
+    """Reconstruct an HDR envmap and stage it as a tempfile ``.exr``.
 
-    Returns the absolute path of the resulting .exr file.
+    Blender's ``set_env_light`` requires an on-disk HDR file. The .exr lives in
+    the system temp dir and should be removed by the caller after rendering.
+    Returns the absolute path of the temp .exr.
     """
     hdr_png = os.path.join(iter_dir, f"context_envhdr_view_{view_idx:02d}.png")
     ldr_path = find_ldr_path(iter_dir, view_idx)
@@ -116,9 +120,12 @@ def prepare_envmap_exr(iter_dir: str, view_idx: int) -> str:
         )
 
     hdr = reconstruct_hdr_from_pair(hdr_png, ldr_path)
-    exr_path = os.path.join(iter_dir, f"context_env_view_{view_idx:02d}.exr")
-    write_exr(exr_path, hdr)
-    return os.path.abspath(exr_path)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=f"sf3d_env_view_{view_idx:02d}_", suffix=".exr"
+    )
+    os.close(fd)
+    write_exr(tmp_path, hdr)
+    return os.path.abspath(tmp_path)
 
 
 # --------------------------------------------------------------------------- #
@@ -234,9 +241,6 @@ def render_scene(scene_dir: str, args: Options) -> None:
         out_path = os.path.join(
             iter_dir, f"{args.output_prefix}_{mesh_idx:02d}.png"
         )
-        if os.path.exists(out_path) and not args.overwrite:
-            print(f"[skip] exists: {out_path}")
-            continue
         targets.append((mesh_idx, view_idx, mesh_path, out_path))
 
     if not targets:
@@ -248,7 +252,13 @@ def render_scene(scene_dir: str, args: Options) -> None:
             f"[render] {os.path.basename(scene_dir)} mesh_{mesh_idx:02d} "
             f"<- env_view_{view_idx:02d} -> {os.path.basename(out_path)}"
         )
-        _render_one_mesh(mesh_path, exr_path, out_path, args)
+        try:
+            _render_one_mesh(mesh_path, exr_path, out_path, args)
+        finally:
+            try:
+                os.remove(exr_path)
+            except OSError:
+                pass
 
 
 def iter_scene_dirs(data_root: str, scene_filter: Optional[str]):

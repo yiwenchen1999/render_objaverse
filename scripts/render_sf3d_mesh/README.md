@@ -26,9 +26,13 @@ pair (reconstructed back to a linear HDR EXR on disk), from a fixed camera at
 
 For each scene the script writes back into the same `iter_*` subdirectory:
 
-- `context_env_view_01.exr`, `context_env_view_02.exr` (reconstructed HDR envmaps).
 - `rerender_view_00.png`, `rerender_view_01.png` (rendered images at
   `--resolution`, premultiplied RGB by alpha to suppress edge aliasing).
+
+The reconstructed HDR envmap is staged as a temp `.exr` only for the duration
+of the Blender render and removed afterwards — no `.exr` files are left in
+the scene directory. Existing `rerender_view_*.png` files are **always
+overwritten**.
 
 The two `rerender_view_*.png` files can be visually compared against the
 existing `input512_view_*.png` ground-truth context views to validate the
@@ -43,10 +47,6 @@ bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh asset_samples/meshes_sf3d
 # limit to a single scene
 SCENE_FILTER=00ab1b90e5fd453aa8706c18cbbdef1e_env_0 \
     bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh asset_samples/meshes_sf3d
-
-# overwrite existing rerenders
-OVERWRITE=1 bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh \
-    asset_samples/meshes_sf3d
 ```
 
 You can also invoke the Python script directly:
@@ -70,7 +70,6 @@ python render_sf3d_meshes.py \
 | `ENV_ROTATION_Z`   | `--env_rotation_z`   | 0.0     | Tweak (radians) if envmap orientation looks rotated vs. the GT. |
 | `ENV_STRENGTH`     | `--env_strength`     | 1.0     | Multiplier on the env light. |
 | `SCENE_FILTER`     | `--scene_filter`     | (none)  | Substring match on scene dir name. |
-| `OVERWRITE`        | `--overwrite`        | off     | Re-render even if `rerender_view_*.png` exists. |
 
 If after a smoke test the envmap orientation looks rotated 90 degrees relative
 to `input512_view_*.png`, the most likely fix is
