@@ -201,8 +201,21 @@ def _render_one_mesh(
     with stdout_redirected():
         import_3d_model(mesh_path)
 
-    # Fit the mesh into a bounding sphere of radius 0.5 centered at the origin
-    # so the fixed camera at distance 1 frames the object reasonably.
+    # IMPORTANT: normalize_scene multiplies obj.scale and translates every
+    # root object in the scene (see bpy_helper/scene.py::scene_root_objects).
+    # We MUST run it before creating the camera/lights so that only the
+    # imported mesh roots are affected. Assert there is no camera in the
+    # scene at this point to prevent accidental rescaling if this routine
+    # is ever reordered.
+    assert not any(o.type == "CAMERA" for o in bpy.data.objects), (
+        "normalize_scene must run before camera creation; "
+        "found a CAMERA object before normalization."
+    )
+    assert not any(o.type == "LIGHT" for o in bpy.data.objects), (
+        "normalize_scene must run before light creation; "
+        "found a LIGHT object before normalization."
+    )
+
     scale, offset = normalize_scene(
         use_bounding_sphere=True, target_scale=args.target_scale
     )
@@ -215,6 +228,8 @@ def _render_one_mesh(
 
     _configure_blender(args.resolution, args.cycles_samples)
 
+    # Camera is created AFTER normalize_scene so it is not scaled/translated
+    # by the bounding-sphere normalization above.
     c2w = look_at_to_c2w([0.0, 1.0, 0.0])
     camera = create_camera(c2w, fov=args.fov_deg)
     bpy.context.scene.camera = camera
