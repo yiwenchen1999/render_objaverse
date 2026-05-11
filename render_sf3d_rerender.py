@@ -10,15 +10,44 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 
-ANCHOR_C2W = np.array(
-    [
-        [1.0, 0.0, 0.0, 1.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ],
-    dtype=np.float64,
-)
+def _build_anchor_c2w(camera_pos=None, target_pos=None) -> np.ndarray:
+    """
+    Build anchor camera c2w:
+    - camera at world (0, 0, -1)
+    - facing scene center (0, 0, 0)
+    """
+    if camera_pos is None:
+        camera_pos = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+    if target_pos is None:
+        target_pos = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+
+    cam_pos = np.asarray(camera_pos, dtype=np.float64)
+    tgt_pos = np.asarray(target_pos, dtype=np.float64)
+
+    # Keep the same convention as bpy_helper.camera.look_at_to_c2w:
+    # camera_direction points from target to camera.
+    cam_dir = cam_pos - tgt_pos
+    cam_dir = cam_dir / np.linalg.norm(cam_dir)
+
+    # Prefer Z-up; if degenerate, fallback to Y-up.
+    up = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    if abs(np.dot(up, cam_dir)) > 0.999:
+        up = np.array([0.0, 1.0, 0.0], dtype=np.float64)
+
+    cam_right = np.cross(up, cam_dir)
+    cam_right = cam_right / np.linalg.norm(cam_right)
+    cam_up = np.cross(cam_dir, cam_right)
+    cam_up = cam_up / np.linalg.norm(cam_up)
+
+    c2w = np.eye(4, dtype=np.float64)
+    c2w[0, :3] = cam_right
+    c2w[1, :3] = cam_up
+    c2w[2, :3] = cam_dir
+    c2w[:3, 3] = cam_pos
+    return c2w
+
+
+ANCHOR_C2W = _build_anchor_c2w()
 
 
 @dataclass
