@@ -10,7 +10,10 @@ For each mesh we:
        ``dataset_polyhaven.reconstruct_hdr_from_pngs``) and stage it as a
        temporary ``.exr`` so Blender can load it; the temp file is removed
        once the render is done.
-    2. Load the glb as-is (no normalize / scale).
+    2. Load the glb and (by default) normalize it via
+       ``bpy_helper.scene.normalize_scene(use_bounding_sphere=True, target_scale=0.5)``,
+       i.e. centered at origin with bounding sphere radius 0.5. Disable with
+       ``--normalize False``.
     3. Place a Cycles camera at ``(0, -1, 0)`` looking at the origin with up=z.
     4. Render at the requested resolution and write back to the scene's iter
        subdir as ``rerender_view_{00,01}.png`` (always overwrites).
@@ -48,6 +51,9 @@ class Options:
     env_strength: float = 1.0
     scene_filter: Optional[str] = None
     output_prefix: str = "rerender_view"
+    normalize: bool = True  # bounding-sphere normalize (like render_3dmodels_dense_addLights.py)
+    normalize_target_scale: float = 0.5  # bounding sphere radius after normalization
+    normalize_use_bounding_sphere: bool = True
 
 
 # --------------------------------------------------------------------------- #
@@ -189,7 +195,7 @@ def _render_one_mesh(
 
     from bpy_helper.camera import create_camera, look_at_to_c2w
     from bpy_helper.light import set_env_light
-    from bpy_helper.scene import import_3d_model, reset_scene
+    from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
     from bpy_helper.material import clear_emission_and_alpha_nodes
 
@@ -197,6 +203,16 @@ def _render_one_mesh(
 
     with stdout_redirected():
         import_3d_model(mesh_path)
+
+    if args.normalize:
+        scale, offset = normalize_scene(
+            use_bounding_sphere=args.normalize_use_bounding_sphere,
+            target_scale=args.normalize_target_scale,
+        )
+        print(
+            f"  normalize: scale={float(scale):.4f} "
+            f"offset=({float(offset[0]):.4f}, {float(offset[1]):.4f}, {float(offset[2]):.4f})"
+        )
 
     clear_emission_and_alpha_nodes()
 
