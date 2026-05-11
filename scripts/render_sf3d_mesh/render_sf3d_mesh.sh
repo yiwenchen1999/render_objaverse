@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_ROOT}"
 
-DATA_ROOT="${1:-/projects/vig/Datasets/objaverse/hf-objaverse-v1/sf3d_meshes/}"
+DATA_ROOT="${1:-/projects/vig/Datasets/objaverse/hf-objaverse-v1/demo_scene/}"
 ITER_SUBDIR="${2:-iter_00000297}"
 RESOLUTION="${RESOLUTION:-512}"
 FOV_DEG="${FOV_DEG:-30}"
