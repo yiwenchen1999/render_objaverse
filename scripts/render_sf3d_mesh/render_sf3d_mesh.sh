@@ -17,11 +17,17 @@ FOV_DEG="${FOV_DEG:-30}"
 CYCLES_SAMPLES="${CYCLES_SAMPLES:-128}"
 ENV_ROTATION_Z="${ENV_ROTATION_Z:-0.0}"
 ENV_STRENGTH="${ENV_STRENGTH:-1.0}"
+TARGET_SCALE="${TARGET_SCALE:-0.2}"
+# 1 → pass --normalize (bounding sphere)
+NORMALIZE="${NORMALIZE:-0}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 
 EXTRA_ARGS=()
 if [ -n "${SCENE_FILTER:-}" ]; then
   EXTRA_ARGS+=(--scene_filter "${SCENE_FILTER}")
+fi
+if [ "${NORMALIZE}" = "1" ]; then
+  EXTRA_ARGS+=(--normalize)
 fi
 
 echo "[render_sf3d_mesh] data_root=${DATA_ROOT} iter_subdir=${ITER_SUBDIR}"
@@ -34,4 +40,5 @@ echo "[render_sf3d_mesh] data_root=${DATA_ROOT} iter_subdir=${ITER_SUBDIR}"
   --cycles_samples "${CYCLES_SAMPLES}" \
   --env_rotation_z "${ENV_ROTATION_Z}" \
   --env_strength "${ENV_STRENGTH}" \
+  --target_scale "${TARGET_SCALE}" \
   "${EXTRA_ARGS[@]}"

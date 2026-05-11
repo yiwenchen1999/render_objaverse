@@ -22,6 +22,11 @@ pair (reconstructed back to a linear HDR EXR on disk), from a fixed camera at
 
 `mesh_00` is paired with `view_01`, `mesh_01` with `view_02`.
 
+Meshes are loaded **as-imported** (no scale/center normalization) unless you
+pass `--normalize`. With `--normalize`, `normalize_scene` fits root objects
+into a bounding sphere at the origin (`--target_scale`, default `0.2`). The
+camera is created only after optional normalization so it is never rescaled.
+
 ## Outputs
 
 For each scene the script writes back into the same `iter_*` subdirectory:
@@ -47,6 +52,9 @@ bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh asset_samples/meshes_sf3d
 # limit to a single scene
 SCENE_FILTER=00ab1b90e5fd453aa8706c18cbbdef1e_env_0 \
     bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh asset_samples/meshes_sf3d
+
+# optional: bounding-sphere normalization (radius TARGET_SCALE)
+NORMALIZE=1 TARGET_SCALE=0.2 bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh asset_samples/meshes_sf3d
 ```
 
 You can also invoke the Python script directly:
@@ -58,6 +66,12 @@ python render_sf3d_meshes.py \
     --resolution 512 \
     --fov_deg 30 \
     --cycles_samples 128
+
+# optional bounding-sphere normalization (omit by default — mesh stays as-imported)
+python render_sf3d_meshes.py \
+    --data_root asset_samples/meshes_sf3d \
+    --normalize \
+    --target_scale 0.2
 ```
 
 ## Tuning knobs
@@ -70,6 +84,8 @@ python render_sf3d_meshes.py \
 | `ENV_ROTATION_Z`   | `--env_rotation_z`   | 0.0     | Tweak (radians) if envmap orientation looks rotated vs. the GT. |
 | `ENV_STRENGTH`     | `--env_strength`     | 1.0     | Multiplier on the env light. |
 | `SCENE_FILTER`     | `--scene_filter`     | (none)  | Substring match on scene dir name. |
+| `NORMALIZE`        | `--normalize`        | off     | Fit mesh roots to bounding sphere (see `--target_scale`). |
+| `TARGET_SCALE`     | `--target_scale`     | 0.2     | Bounding-sphere radius when `--normalize`. |
 
 If after a smoke test the envmap orientation looks rotated 90 degrees relative
 to `input512_view_*.png`, the most likely fix is
