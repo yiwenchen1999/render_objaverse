@@ -188,37 +188,84 @@ def _fov_deg_from_fxfycxcy(fxfycxcy: Optional[List[float]]) -> Optional[float]:
     return math.degrees(2.0 * math.atan(img_w / (2.0 * float(fx))))
 
 
+def _closest_point_to_rays(
+    origins: List[np.ndarray], directions: List[np.ndarray]
+) -> np.ndarray:
+    """Least-squares closest point to a set of rays in 3D.
+
+    Each ray is (origin, direction). Direction does not need to be unit.
+    Solves ``argmin_X sum_i || (I - d_i d_i^T) (X - p_i) ||^2``.
+    """
+    M = np.zeros((3, 3), dtype=np.float64)
+    b = np.zeros(3, dtype=np.float64)
+    for p, d in zip(origins, directions):
+        d_unit = np.asarray(d, dtype=np.float64)
+        n = float(np.linalg.norm(d_unit))
+        if n < 1e-9:
+            continue
+        d_unit = d_unit / n
+        proj = np.eye(3) - np.outer(d_unit, d_unit)
+        M += proj
+        b += proj @ np.asarray(p, dtype=np.float64)
+    return np.linalg.solve(M, b)
+
+
+def _estimate_lookat_center_gl(c2w_list_gl: List[np.ndarray]) -> np.ndarray:
+    """Closest-approach point of all camera forward rays (OpenGL c2w).
+
+    In OpenGL, the camera looks down -Z so ``forward = -c2w[:, 2]``.
+    Returns the 3D point that all cameras (approximately) look at.
+    """
+    origins = [np.asarray(c, dtype=np.float64)[:3, 3] for c in c2w_list_gl]
+    forwards = [-np.asarray(c, dtype=np.float64)[:3, 2] for c in c2w_list_gl]
+    return _closest_point_to_rays(origins, forwards)
+
+
 def _similarity_from_context(
-    c2w_ctx_blender: np.ndarray, c2w_ctx_other_gl: np.ndarray
+    c2w_ctx_blender: np.ndarray,
+    c2w_ctx_other_gl: np.ndarray,
+    C_other: np.ndarray,
 ) -> Tuple[np.ndarray, float]:
-    """Compute (R, s) such that for any camera in the 'other' world (OpenGL):
+    """Compute (R, s) such that for any 'other' OpenGL camera c2w_other_gl,
+    the equivalent Blender-world c2w_blender (with mesh at origin in Blender)
+    is:
 
         R_blender = R @ R_other
-        t_blender = s * R @ t_other
+        t_blender = s * R @ (t_other - C_other)
 
-    With both context cameras looking at their respective world origins, this
-    similarity preserves camera-to-origin direction and the relative distance
-    of every camera vs. the context one.
+    Applied to the anchor (context) camera, this recovers
+    ``c2w_ctx_blender`` exactly (provided the anchor in 'other' world also
+    looks at ``C_other``, which is the shared look-at point of all dataset
+    cameras).
     """
     c2w_b = np.asarray(c2w_ctx_blender, dtype=np.float64)
     c2w_o = np.asarray(c2w_ctx_other_gl, dtype=np.float64)
-    R_b = c2w_b[:3, :3]
-    R_o = c2w_o[:3, :3]
-    t_b = c2w_b[:3, 3]
-    t_o = c2w_o[:3, 3]
-    R = R_b @ R_o.T
-    n_o = float(np.linalg.norm(t_o))
-    n_b = float(np.linalg.norm(t_b))
+    C_o = np.asarray(C_other, dtype=np.float64)
+    R = c2w_b[:3, :3] @ c2w_o[:3, :3].T
+    diff_o = c2w_o[:3, 3] - C_o
+    diff_b = c2w_b[:3, 3]  # C_blender = origin
+    n_o = float(np.linalg.norm(diff_o))
+    n_b = float(np.linalg.norm(diff_b))
     s = (n_b / n_o) if n_o > 1e-9 else 1.0
     return R, s
 
 
-def _apply_similarity(R: np.ndarray, s: float, c2w_other_gl: np.ndarray) -> np.ndarray:
-    """Apply the similarity (R, s) to a c2w expressed in 'other' OpenGL frame."""
+def _apply_similarity(
+    R: np.ndarray,
+    s: float,
+    C_other: np.ndarray,
+    c2w_other_gl: np.ndarray,
+) -> np.ndarray:
+    """Apply the (R, s, C_other) similarity to a c2w in 'other' OpenGL frame.
+
+    Equivalent to translating the 'other' world so ``C_other`` is at the
+    origin, then rotating by ``R`` and scaling translations by ``s``.
+    """
     c2w_o = np.asarray(c2w_other_gl, dtype=np.float64)
+    C_o = np.asarray(C_other, dtype=np.float64)
     out = np.eye(4, dtype=np.float64)
     out[:3, :3] = R @ c2w_o[:3, :3]
-    out[:3, 3] = s * (R @ c2w_o[:3, 3])
+    out[:3, 3] = s * (R @ (c2w_o[:3, 3] - C_o))
     return out
 
 
@@ -399,13 +446,55 @@ def _build_views_for_mesh(
         print(f"  [target] missing {os.path.basename(ctx_json)}; skipping novel views")
         return views, env_rotation_euler
 
+    # ------------------------------------------------------------------
+    # Load every camera JSON we'll need (both context cams + N targets)
+    # so we can estimate the shared look-at point ``C_other``. Cameras in
+    # this dataset orbit around ``(0, 0, ~0.79)`` in their world, not the
+    # world origin, so we must center on ``C_other`` before applying R, s.
+    # ------------------------------------------------------------------
+    c2w_others_gl: List[np.ndarray] = []
     c2w_ctx_other_ocv, _ = _load_camera_json(ctx_json)
     c2w_ctx_other_gl = _opencv_c2w_to_opengl(c2w_ctx_other_ocv)
-    R, s = _similarity_from_context(c2w_ctx_blender, c2w_ctx_other_gl)
+    c2w_others_gl.append(c2w_ctx_other_gl)
+
+    # Also include the *other* mesh's context camera if available, plus every
+    # target camera; this stabilises the C_other estimate.
+    for v in (1, 2):
+        if v == view_idx:
+            continue
+        p = os.path.join(iter_dir, f"camera_context_view_{v:02d}.json")
+        if os.path.exists(p):
+            c2w_o, _ = _load_camera_json(p)
+            c2w_others_gl.append(_opencv_c2w_to_opengl(c2w_o))
+
+    target_payload: List[Tuple[int, np.ndarray, Optional[List[float]]]] = []
+    for k in range(1, args.num_target_views + 1):
+        tgt_json = os.path.join(iter_dir, f"camera_target_view_{k:02d}.json")
+        if not os.path.exists(tgt_json):
+            print(f"  [target] missing {os.path.basename(tgt_json)}; skipping")
+            continue
+        c2w_tgt_ocv, fxfycxcy_tgt = _load_camera_json(tgt_json)
+        c2w_tgt_gl = _opencv_c2w_to_opengl(c2w_tgt_ocv)
+        c2w_others_gl.append(c2w_tgt_gl)
+        target_payload.append((k, c2w_tgt_gl, fxfycxcy_tgt))
+
+    C_other = _estimate_lookat_center_gl(c2w_others_gl)
+    R, s = _similarity_from_context(c2w_ctx_blender, c2w_ctx_other_gl, C_other)
     print(
         f"  similarity (other -> blender world): "
-        f"scale={s:.4f}, |t_ctx_other|={np.linalg.norm(c2w_ctx_other_gl[:3, 3]):.4f}"
+        f"scale={s:.4f}, C_other=({C_other[0]:+.4f}, "
+        f"{C_other[1]:+.4f}, {C_other[2]:+.4f}), "
+        f"|t_anchor_other - C_other|={np.linalg.norm(c2w_ctx_other_gl[:3, 3] - C_other):.4f}"
     )
+
+    # Sanity: the anchor must round-trip back to t_blender = (0, 1, 0).
+    anchor_recovered = _apply_similarity(R, s, C_other, c2w_ctx_other_gl)
+    pos_err = float(np.linalg.norm(anchor_recovered[:3, 3] - c2w_ctx_blender[:3, 3]))
+    if pos_err > 1e-3:
+        print(
+            f"  [warn] anchor recovery error = {pos_err:.4e} "
+            f"(expected ~0); look-at estimation may be off"
+        )
 
     if args.align_env:
         rx, ry, rz = _euler_xyz_from_R(R)
@@ -415,14 +504,8 @@ def _build_views_for_mesh(
             f"{rz:+.4f}) + z_offset={args.env_rotation_z:+.4f}"
         )
 
-    for k in range(1, args.num_target_views + 1):
-        tgt_json = os.path.join(iter_dir, f"camera_target_view_{k:02d}.json")
-        if not os.path.exists(tgt_json):
-            print(f"  [target] missing {os.path.basename(tgt_json)}; skipping")
-            continue
-        c2w_tgt_ocv, fxfycxcy_tgt = _load_camera_json(tgt_json)
-        c2w_tgt_gl = _opencv_c2w_to_opengl(c2w_tgt_ocv)
-        c2w_tgt_blender = _apply_similarity(R, s, c2w_tgt_gl)
+    for k, c2w_tgt_gl, fxfycxcy_tgt in target_payload:
+        c2w_tgt_blender = _apply_similarity(R, s, C_other, c2w_tgt_gl)
         fov_tgt = _fov_deg_from_fxfycxcy(fxfycxcy_tgt) or float(args.fov_deg)
         out_tgt = os.path.join(
             iter_dir, f"{args.target_prefix}_{mesh_idx}_{k - 1}.png"
