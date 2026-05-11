@@ -10,17 +10,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_ROOT}"
 
-DATA_ROOT="${1:-/projects/vig/Datasets/objaverse/hf-objaverse-v1/sf3d_meshes}"
+DATA_ROOT="${1:-/projects/vig/Datasets/objaverse/hf-objaverse-v1/sf3d_meshes/}"
 ITER_SUBDIR="${2:-iter_00000297}"
 RESOLUTION="${RESOLUTION:-512}"
 FOV_DEG="${FOV_DEG:-30}"
 CYCLES_SAMPLES="${CYCLES_SAMPLES:-128}"
 ENV_ROTATION_Z="${ENV_ROTATION_Z:-0.0}"
 ENV_STRENGTH="${ENV_STRENGTH:-1.0}"
-TARGET_SCALE="${TARGET_SCALE:-0.2}"
+TARGET_SCALE="${TARGET_SCALE:-0.22}"
 NUM_TARGET_VIEWS="${NUM_TARGET_VIEWS:-8}"
 # 1 → pass --normalize (bounding sphere)
-NORMALIZE="${NORMALIZE:-0}"
+NORMALIZE="${NORMALIZE:-1}"
 # 1 → pass --skip_target_views (context view only)
 SKIP_TARGET_VIEWS="${SKIP_TARGET_VIEWS:-0}"
 # 1 → keep env rotation as identity (no world-rotation R applied to env)
