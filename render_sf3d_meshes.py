@@ -429,10 +429,27 @@ def _build_views_for_mesh(
         ("ctx", c2w_ctx_blender, float(args.fov_deg), ctx_out)
     ]
 
+    # ------------------------------------------------------------------
+    # Envmap rotation.
+    #
+    # The HDR envmap in this dataset is sampled in the **anchor camera's**
+    # local frame (a direction d_cam in camera space picks a pixel in the
+    # envmap). Blender's ``ShaderNodeTexEnvironment`` samples in the
+    # **world** frame, so the mapping-node rotation must convert
+    # ``d_world -> d_cam``: that is exactly ``R_anchor_w2c = R_anchor_c2w.T``.
+    # This depends only on the fixed Blender anchor camera (here
+    # ``(0, 1, 0)`` looking at the origin) -- NOT on the dataset->Blender
+    # similarity rotation ``R``, since the envmap is anchored to the
+    # camera, not to the dataset world.
+    # ------------------------------------------------------------------
+    if args.align_env:
+        rx0, ry0, rz0 = _euler_xyz_from_R(c2w_ctx_blender[:3, :3].T)
+    else:
+        rx0, ry0, rz0 = 0.0, 0.0, 0.0
     env_rotation_euler: Tuple[float, float, float] = (
-        0.0,
-        0.0,
-        float(args.env_rotation_z),
+        rx0,
+        ry0,
+        rz0 + float(args.env_rotation_z),
     )
 
     if args.skip_target_views:
@@ -496,12 +513,18 @@ def _build_views_for_mesh(
             f"(expected ~0); look-at estimation may be off"
         )
 
+    # env_rotation_euler was already computed above from c2w_ctx_blender;
+    # log it here so per-scene output stays informative.
     if args.align_env:
-        rx, ry, rz = _euler_xyz_from_R(R)
-        env_rotation_euler = (rx, ry, rz + float(args.env_rotation_z))
         print(
-            f"  env rotation (XYZ, rad): ({rx:+.4f}, {ry:+.4f}, "
-            f"{rz:+.4f}) + z_offset={args.env_rotation_z:+.4f}"
+            f"  env rotation (XYZ, rad): ({rx0:+.4f}, {ry0:+.4f}, "
+            f"{rz0:+.4f}) + z_offset={args.env_rotation_z:+.4f} "
+            "[anchor camera-frame -> world]"
+        )
+    else:
+        print(
+            f"  env rotation: (0, 0, {args.env_rotation_z:+.4f}) "
+            "[--no-align-env: camera-frame rotation skipped]"
         )
 
     for k, c2w_tgt_gl, fxfycxcy_tgt in target_payload:

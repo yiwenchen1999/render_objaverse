@@ -110,12 +110,37 @@ python render_sf3d_meshes.py \
 | `TARGET_SCALE`     | `--target_scale`     | 0.2     | Bounding-sphere radius when `--normalize`. |
 | `NUM_TARGET_VIEWS` | `--num_target_views` | 8       | Number of `camera_target_view_*.json` files to render per mesh. |
 | `SKIP_TARGET_VIEWS`| `--skip_target_views`| off     | Render only the context view per mesh. |
-| `NO_ALIGN_ENV`     | `--align_env=False`  | off     | Disable rotating the envmap by the derived world rotation `R`. |
+| `NO_ALIGN_ENV`     | `--align_env=False`  | off     | Disable the camera-frame → world rotation on the envmap (debug only). |
 
-If after a smoke test the envmap orientation still looks rotated 90 degrees
-relative to `input512_view_*.png`, the most likely fix is to add
-`--env_rotation_z="-1.5707963"` (i.e. `-pi/2`), which is equivalent to the
-`np.roll(envmap, -w//4, axis=1)` step that
-[dataset_polyhaven.py](../../dataset_polyhaven.py) applies on load. This
-offset is applied **in addition** to the per-mesh world rotation `R` (unless
-`--align_env=False` is set).
+## Envmap coordinate frame
+
+The reconstructed HDR envmap (from `context_envhdr_view_XX.png` +
+`context_envldr_view_XX.jpg`) is parameterized in the **anchor camera's
+local frame** — a direction `d_cam` selects a pixel in the equirectangular
+panorama. Blender's `ShaderNodeTexEnvironment`, on the other hand,
+samples in the **world** frame, so we feed the Mapping node a rotation
+that maps `d_world → d_cam`:
+
+```
+R_mapping = R_anchor_w2c = R_anchor_c2w.T
+```
+
+`R_anchor_c2w` is the c2w rotation of the *Blender* anchor camera (here
+fixed at `(0, 1, 0)` looking at the origin with world-up = +Z); the
+dataset → Blender similarity rotation `R` is **not** applied to the
+envmap, because the envmap is anchored to the camera, not to the dataset
+world.
+
+If after a smoke test the envmap orientation still looks rotated 90°
+horizontally relative to `input512_view_*.png` (i.e. the panorama's "front"
+column does not align with what the camera sees), the dataset envmap
+likely encodes "image center = camera forward (-Z)" rather than
+"image center = camera +X" (Blender's default). Tune the residual offset
+with `--env_rotation_z` (radians, around world +Z), e.g.
+
+```
+--env_rotation_z="-1.5707963"   # -pi/2
+```
+
+which is equivalent to the `np.roll(envmap, -w//4, axis=1)` step in
+[dataset_polyhaven.py](../../dataset_polyhaven.py).
