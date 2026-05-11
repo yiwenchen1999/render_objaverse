@@ -13,11 +13,11 @@ import numpy as np
 def _build_anchor_c2w(camera_pos=None, target_pos=None) -> np.ndarray:
     """
     Build anchor camera c2w:
-    - camera at world (0, 0, -1)
+    - camera at world (0, -1, 0)
     - facing scene center (0, 0, 0)
     """
     if camera_pos is None:
-        camera_pos = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+        camera_pos = np.array([0.0, -1.0, 0.0], dtype=np.float64)
     if target_pos is None:
         target_pos = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
