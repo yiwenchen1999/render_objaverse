@@ -1,52 +1,40 @@
 #!/bin/bash
-#SBATCH --partition=jiang
-#SBATCH --nodes=1
-#SBATCH --time=24:00:00
-#SBATCH --job-name=render_sf3d_mesh
-#SBATCH --mem=32
-#SBATCH --ntasks=8
-#SBATCH --gres=gpu:a5000:1
-#SBATCH --output=myjob.render_sf3d_mesh.out
-#SBATCH --error=myjob.render_sf3d_mesh.err
-
+# Render SF3D meshes per scene under a data_root, using the per-scene context
+# envmap to light each mesh. Run from the repo root or pass DATA_ROOT.
+#
+# Usage:
+#   bash scripts/render_sf3d_mesh/render_sf3d_mesh.sh [DATA_ROOT] [ITER_SUBDIR]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_ROOT}"
 
-# Override these via environment variables if needed.
-PYTHON_BIN="${PYTHON_BIN:-python}"
-SCENE_REPO_DIR="${SCENE_REPO_DIR:-/projects/vig/Datasets/objaverse/hf-objaverse-v1/sf3d_meshes}"
-OUTPUT_SUBDIR="${OUTPUT_SUBDIR:-rerendered}"
-RESOLUTION="${RESOLUTION:-256}"
+DATA_ROOT="${1:-/projects/vig/Datasets/objaverse/hf-objaverse-v1/sf3d_meshes}"
+ITER_SUBDIR="${2:-iter_00000297}"
+RESOLUTION="${RESOLUTION:-512}"
 FOV_DEG="${FOV_DEG:-30}"
-DEVICE="${DEVICE:-GPU}"
-SAMPLES="${SAMPLES:-64}"
-MAX_SCENES="${MAX_SCENES:--1}"
-TARGET_ENV_INDEX="${TARGET_ENV_INDEX:-1}"
+CYCLES_SAMPLES="${CYCLES_SAMPLES:-128}"
+ENV_ROTATION_Z="${ENV_ROTATION_Z:-0.0}"
 ENV_STRENGTH="${ENV_STRENGTH:-1.0}"
-VERBOSE="${VERBOSE:-1}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 
-CMD=(
-  "${PYTHON_BIN}" "render_sf3d_rerender.py"
-  --repo-dir "${SCENE_REPO_DIR}"
-  --output-subdir "${OUTPUT_SUBDIR}"
-  --resolution "${RESOLUTION}"
-  --fov-deg "${FOV_DEG}"
-  --device "${DEVICE}"
-  --samples "${SAMPLES}"
-  --max-scenes "${MAX_SCENES}"
-  --target-env-index "${TARGET_ENV_INDEX}"
-  --env-strength "${ENV_STRENGTH}"
-)
-
-if [[ "${VERBOSE}" == "1" ]]; then
-  CMD+=(--verbose)
+EXTRA_ARGS=()
+if [ -n "${SCENE_FILTER:-}" ]; then
+  EXTRA_ARGS+=(--scene_filter "${SCENE_FILTER}")
+fi
+if [ "${OVERWRITE:-0}" = "1" ]; then
+  EXTRA_ARGS+=(--overwrite)
 fi
 
-echo "Running command:"
-printf ' %q' "${CMD[@]}"
-echo
+echo "[render_sf3d_mesh] data_root=${DATA_ROOT} iter_subdir=${ITER_SUBDIR}"
 
-"${CMD[@]}"
+"${PYTHON_BIN}" render_sf3d_meshes.py \
+  --data_root "${DATA_ROOT}" \
+  --iter_subdir "${ITER_SUBDIR}" \
+  --resolution "${RESOLUTION}" \
+  --fov_deg "${FOV_DEG}" \
+  --cycles_samples "${CYCLES_SAMPLES}" \
+  --env_rotation_z "${ENV_ROTATION_Z}" \
+  --env_strength "${ENV_STRENGTH}" \
+  "${EXTRA_ARGS[@]}"
