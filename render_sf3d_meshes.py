@@ -195,7 +195,7 @@ def _render_one_mesh(
 
     _configure_blender(args.resolution, args.cycles_samples)
 
-    c2w = look_at_to_c2w([0.0, -1.0, 0.0])
+    c2w = look_at_to_c2w([0.0, 1.0, 0.0])
     camera = create_camera(c2w, fov=args.fov_deg)
     bpy.context.scene.camera = camera
 
