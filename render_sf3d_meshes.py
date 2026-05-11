@@ -2,8 +2,8 @@
 
 Each scene directory under ``--data_root`` is expected to contain two SF3D
 mesh predictions (``mesh_00.glb``, ``mesh_01.glb``) and an iteration subdir
-(default ``iter_00000297``) holding the paired HDR/LDR encoded envmap pngs
-(``context_envhdr_view_{01,02}.png``, ``context_envldr_view_{01,02}.(jpg|png)``).
+(default ``iter_00000297``) holding paired HDR/LDR encoded envmap pngs and
+the camera JSONs.
 
 For each mesh we:
     1. Reconstruct the HDR envmap from the (hdr_png, ldr_png) pair (mirroring
@@ -11,20 +11,32 @@ For each mesh we:
        temporary ``.exr`` so Blender can load it; the temp file is removed
        once the render is done.
     2. Load the glb. Optionally normalize with ``normalize_scene(...)`` when
-       ``--normalize`` is set (bounding sphere radius ``--target_scale``,
-       default 0.2). By default the mesh stays as-imported scale/position.
-    3. Place a Cycles camera at ``(0, -1, 0)`` looking at the origin with up=z.
-    4. Render at the requested resolution and write back to the scene's iter
-       subdir as ``rerender_view_{00,01}.png`` (always overwrites).
+       ``--normalize`` is set (bounding sphere radius ``--target_scale``).
+       By default the mesh stays as-imported scale/position.
+    3. Render the **context view** with a Blender camera fixed at
+       ``(0, 1, 0)`` looking at the origin (up=z), saved as
+       ``rerender_view_{00,01}.png``.
+    4. Render the **target/novel views**: parse
+       ``camera_context_view_{01,02}.json`` and
+       ``camera_target_view_{01..08}.json`` (OpenCV c2w + fxfycxcy in some
+       other world frame). For each mesh, derive a similarity transform
+       (R, s) from its context cameras (other-world OpenGL <-> blender-world
+       OpenGL), apply it to every target c2w, and render to
+       ``target_view_{mesh_idx}_{k}.png`` (k = 0..7). The same envmap is used
+       for both context and targets; by default we also rotate the world
+       envmap by R so the lighting direction stays consistent with the
+       dataset (override via ``--no_align_env``).
 """
 
 import glob
+import json
+import math
 import os
 import sys
 import tempfile
 import traceback
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional, Tuple
 
 # Ensure project root is on path so bpy_helper is found when run via Blender -b -P
 _script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -46,12 +58,19 @@ class Options:
     resolution: int = 512
     fov_deg: float = 30.0
     cycles_samples: int = 128
-    env_rotation_z: float = 0.0
+    env_rotation_z: float = 0.0  # extra Z-axis offset applied on top of R
     env_strength: float = 1.0
     normalize: bool = False  # if True, bbox-sphere normalization after import
     target_scale: float = 0.2  # bounding-sphere radius when normalize is True
     scene_filter: Optional[str] = None
     output_prefix: str = "rerender_view"
+    target_prefix: str = "target_view"
+    num_target_views: int = 8
+    skip_target_views: bool = False
+    # If True, rotate the env light by the world-rotation R derived from
+    # context cameras so the lighting direction stays consistent with the
+    # dataset. Disable to keep the env in identity Blender-world orientation.
+    align_env: bool = True
 
 
 # --------------------------------------------------------------------------- #
@@ -133,6 +152,89 @@ def prepare_envmap_exr(iter_dir: str, view_idx: int) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Camera / similarity helpers                                                 #
+# --------------------------------------------------------------------------- #
+
+
+def _load_camera_json(path: str) -> Tuple[np.ndarray, Optional[List[float]]]:
+    """Read a camera JSON and return (c2w 4x4 ndarray, [fx, fy, cx, cy])."""
+    with open(path, "r") as f:
+        data = json.load(f)
+    c2w = np.asarray(data["c2w"], dtype=np.float64)
+    fxfycxcy = data.get("fxfycxcy")
+    return c2w, fxfycxcy
+
+
+def _opencv_c2w_to_opengl(c2w: np.ndarray) -> np.ndarray:
+    """Convert a c2w from OpenCV camera convention to OpenGL/Blender.
+
+    OpenCV: +X right, +Y down, +Z forward.
+    OpenGL: +X right, +Y up,   -Z forward.
+    The world frame is unchanged. We flip the Y and Z basis vectors of the
+    camera (columns 1 and 2 of c2w); translation (column 3) is unchanged.
+    """
+    out = np.asarray(c2w, dtype=np.float64).copy()
+    out[:3, 1] *= -1.0
+    out[:3, 2] *= -1.0
+    return out
+
+
+def _fov_deg_from_fxfycxcy(fxfycxcy: Optional[List[float]]) -> Optional[float]:
+    """Recover horizontal FoV in degrees from intrinsics, assuming centered cx."""
+    if fxfycxcy is None:
+        return None
+    fx, _fy, cx, _cy = fxfycxcy
+    img_w = 2.0 * float(cx)
+    return math.degrees(2.0 * math.atan(img_w / (2.0 * float(fx))))
+
+
+def _similarity_from_context(
+    c2w_ctx_blender: np.ndarray, c2w_ctx_other_gl: np.ndarray
+) -> Tuple[np.ndarray, float]:
+    """Compute (R, s) such that for any camera in the 'other' world (OpenGL):
+
+        R_blender = R @ R_other
+        t_blender = s * R @ t_other
+
+    With both context cameras looking at their respective world origins, this
+    similarity preserves camera-to-origin direction and the relative distance
+    of every camera vs. the context one.
+    """
+    c2w_b = np.asarray(c2w_ctx_blender, dtype=np.float64)
+    c2w_o = np.asarray(c2w_ctx_other_gl, dtype=np.float64)
+    R_b = c2w_b[:3, :3]
+    R_o = c2w_o[:3, :3]
+    t_b = c2w_b[:3, 3]
+    t_o = c2w_o[:3, 3]
+    R = R_b @ R_o.T
+    n_o = float(np.linalg.norm(t_o))
+    n_b = float(np.linalg.norm(t_b))
+    s = (n_b / n_o) if n_o > 1e-9 else 1.0
+    return R, s
+
+
+def _apply_similarity(R: np.ndarray, s: float, c2w_other_gl: np.ndarray) -> np.ndarray:
+    """Apply the similarity (R, s) to a c2w expressed in 'other' OpenGL frame."""
+    c2w_o = np.asarray(c2w_other_gl, dtype=np.float64)
+    out = np.eye(4, dtype=np.float64)
+    out[:3, :3] = R @ c2w_o[:3, :3]
+    out[:3, 3] = s * (R @ c2w_o[:3, 3])
+    return out
+
+
+def _euler_xyz_from_R(R: np.ndarray) -> Tuple[float, float, float]:
+    """Decompose a 3x3 rotation matrix into Blender 'XYZ' Euler angles (radians)."""
+    from mathutils import Matrix as MMatrix  # type: ignore[import-not-found]
+
+    m4 = MMatrix.Identity(4)
+    for i in range(3):
+        for j in range(3):
+            m4[i][j] = float(R[i][j])
+    e = m4.to_euler("XYZ")
+    return (float(e.x), float(e.y), float(e.z))
+
+
+# --------------------------------------------------------------------------- #
 # Blender rendering                                                           #
 # --------------------------------------------------------------------------- #
 
@@ -182,16 +284,20 @@ def _render_and_premultiply(output_path: str) -> None:
     iio.imwrite(output_path, (rgba * 255).clip(0, 255).astype(np.uint8))
 
 
-def _render_one_mesh(
+def _render_one_mesh_views(
     mesh_path: str,
     exr_path: str,
-    out_path: str,
+    env_rotation_euler: Tuple[float, float, float],
+    views: List[Tuple[str, np.ndarray, float, str]],
     args: Options,
 ) -> None:
-    """Reset Blender, load one mesh, set env light, render to ``out_path``."""
+    """Load one mesh + env light once, then render every view in ``views``.
+
+    Each entry in ``views`` is ``(label, c2w_4x4_blender, fov_deg, out_path)``.
+    """
     import bpy
 
-    from bpy_helper.camera import create_camera, look_at_to_c2w
+    from bpy_helper.camera import create_camera
     from bpy_helper.light import set_env_light
     from bpy_helper.scene import import_3d_model, normalize_scene, reset_scene
     from bpy_helper.utils import stdout_redirected
@@ -230,29 +336,104 @@ def _render_one_mesh(
 
     _configure_blender(args.resolution, args.cycles_samples)
 
-    # Camera is created AFTER optional bounding-sphere normalization so it is not
-    # scaled/translated with the mesh roots.
-    c2w = look_at_to_c2w([0.0, 1.0, 0.0])
-    camera = create_camera(c2w, fov=args.fov_deg)
-    bpy.context.scene.camera = camera
-
     set_env_light(
         exr_path,
         strength=args.env_strength,
-        rotation_euler=[0.0, 0.0, args.env_rotation_z],
+        rotation_euler=list(env_rotation_euler),
     )
 
-    with stdout_redirected():
-        _render_and_premultiply(out_path)
+    for label, c2w, fov_deg, out_path in views:
+        camera = create_camera(c2w, fov=fov_deg)
+        bpy.context.scene.camera = camera
+        print(
+            f"    [{label}] fov={fov_deg:.2f} deg -> {os.path.basename(out_path)}"
+        )
+        with stdout_redirected():
+            _render_and_premultiply(out_path)
+        try:
+            bpy.data.objects.remove(camera, do_unlink=True)
+        except Exception:
+            pass
 
-    try:
-        bpy.data.objects.remove(camera, do_unlink=True)
-    except Exception:
-        pass
+
+def _build_views_for_mesh(
+    iter_dir: str,
+    mesh_idx: int,
+    view_idx: int,
+    args: Options,
+) -> Tuple[List[Tuple[str, np.ndarray, float, str]], Tuple[float, float, float]]:
+    """Return (views, env_rotation_euler) for one mesh.
+
+    ``views`` always starts with the fixed-Blender context view and is then
+    extended with target views derived from the per-scene camera JSONs.
+    ``env_rotation_euler`` is the rotation_euler to feed to ``set_env_light``;
+    by default it encodes the world-rotation R recovered from the context
+    cameras so the lighting stays aligned with the dataset.
+    """
+    from bpy_helper.camera import look_at_to_c2w
+
+    # Context view in Blender: fixed camera at (0, 1, 0) -> origin.
+    c2w_ctx_blender = np.asarray(
+        look_at_to_c2w([0.0, 1.0, 0.0]), dtype=np.float64
+    )
+
+    ctx_out = os.path.join(iter_dir, f"{args.output_prefix}_{mesh_idx:02d}.png")
+    views: List[Tuple[str, np.ndarray, float, str]] = [
+        ("ctx", c2w_ctx_blender, float(args.fov_deg), ctx_out)
+    ]
+
+    env_rotation_euler: Tuple[float, float, float] = (
+        0.0,
+        0.0,
+        float(args.env_rotation_z),
+    )
+
+    if args.skip_target_views:
+        print("  target views: skipped (--skip_target_views).")
+        return views, env_rotation_euler
+
+    ctx_json = os.path.join(
+        iter_dir, f"camera_context_view_{view_idx:02d}.json"
+    )
+    if not os.path.exists(ctx_json):
+        print(f"  [target] missing {os.path.basename(ctx_json)}; skipping novel views")
+        return views, env_rotation_euler
+
+    c2w_ctx_other_ocv, _ = _load_camera_json(ctx_json)
+    c2w_ctx_other_gl = _opencv_c2w_to_opengl(c2w_ctx_other_ocv)
+    R, s = _similarity_from_context(c2w_ctx_blender, c2w_ctx_other_gl)
+    print(
+        f"  similarity (other -> blender world): "
+        f"scale={s:.4f}, |t_ctx_other|={np.linalg.norm(c2w_ctx_other_gl[:3, 3]):.4f}"
+    )
+
+    if args.align_env:
+        rx, ry, rz = _euler_xyz_from_R(R)
+        env_rotation_euler = (rx, ry, rz + float(args.env_rotation_z))
+        print(
+            f"  env rotation (XYZ, rad): ({rx:+.4f}, {ry:+.4f}, "
+            f"{rz:+.4f}) + z_offset={args.env_rotation_z:+.4f}"
+        )
+
+    for k in range(1, args.num_target_views + 1):
+        tgt_json = os.path.join(iter_dir, f"camera_target_view_{k:02d}.json")
+        if not os.path.exists(tgt_json):
+            print(f"  [target] missing {os.path.basename(tgt_json)}; skipping")
+            continue
+        c2w_tgt_ocv, fxfycxcy_tgt = _load_camera_json(tgt_json)
+        c2w_tgt_gl = _opencv_c2w_to_opengl(c2w_tgt_ocv)
+        c2w_tgt_blender = _apply_similarity(R, s, c2w_tgt_gl)
+        fov_tgt = _fov_deg_from_fxfycxcy(fxfycxcy_tgt) or float(args.fov_deg)
+        out_tgt = os.path.join(
+            iter_dir, f"{args.target_prefix}_{mesh_idx}_{k - 1}.png"
+        )
+        views.append((f"tgt_{k - 1}", c2w_tgt_blender, fov_tgt, out_tgt))
+
+    return views, env_rotation_euler
 
 
 def render_scene(scene_dir: str, args: Options) -> None:
-    """Render both meshes of a single scene directory."""
+    """Render both meshes (context + target views) for one scene directory."""
     iter_dir = os.path.join(scene_dir, args.iter_subdir)
     if not os.path.isdir(iter_dir):
         # Fallback: pick the highest-numbered ``iter_*`` subdirectory.
@@ -261,29 +442,29 @@ def render_scene(scene_dir: str, args: Options) -> None:
             raise FileNotFoundError(f"No iter_* subdir under {scene_dir}")
         iter_dir = candidates[-1]
 
-    targets = []
+    mesh_jobs = []
     for mesh_idx in (0, 1):
         mesh_path = os.path.join(scene_dir, f"mesh_{mesh_idx:02d}.glb")
         if not os.path.exists(mesh_path):
             print(f"[skip] missing mesh: {mesh_path}")
             continue
         view_idx = mesh_idx + 1  # mesh_00 -> view_01, mesh_01 -> view_02
-        out_path = os.path.join(
-            iter_dir, f"{args.output_prefix}_{mesh_idx:02d}.png"
-        )
-        targets.append((mesh_idx, view_idx, mesh_path, out_path))
+        mesh_jobs.append((mesh_idx, view_idx, mesh_path))
 
-    if not targets:
+    if not mesh_jobs:
         return
 
-    for mesh_idx, view_idx, mesh_path, out_path in targets:
+    for mesh_idx, view_idx, mesh_path in mesh_jobs:
         exr_path = prepare_envmap_exr(iter_dir, view_idx)
+        views, env_euler = _build_views_for_mesh(
+            iter_dir, mesh_idx, view_idx, args
+        )
         print(
             f"[render] {os.path.basename(scene_dir)} mesh_{mesh_idx:02d} "
-            f"<- env_view_{view_idx:02d} -> {os.path.basename(out_path)}"
+            f"<- env_view_{view_idx:02d} ({len(views)} view(s))"
         )
         try:
-            _render_one_mesh(mesh_path, exr_path, out_path, args)
+            _render_one_mesh_views(mesh_path, exr_path, env_euler, views, args)
         finally:
             try:
                 os.remove(exr_path)

@@ -18,8 +18,13 @@ CYCLES_SAMPLES="${CYCLES_SAMPLES:-128}"
 ENV_ROTATION_Z="${ENV_ROTATION_Z:-0.0}"
 ENV_STRENGTH="${ENV_STRENGTH:-1.0}"
 TARGET_SCALE="${TARGET_SCALE:-0.2}"
+NUM_TARGET_VIEWS="${NUM_TARGET_VIEWS:-8}"
 # 1 → pass --normalize (bounding sphere)
 NORMALIZE="${NORMALIZE:-0}"
+# 1 → pass --skip_target_views (context view only)
+SKIP_TARGET_VIEWS="${SKIP_TARGET_VIEWS:-0}"
+# 1 → keep env rotation as identity (no world-rotation R applied to env)
+NO_ALIGN_ENV="${NO_ALIGN_ENV:-0}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 
 EXTRA_ARGS=()
@@ -28,6 +33,12 @@ if [ -n "${SCENE_FILTER:-}" ]; then
 fi
 if [ "${NORMALIZE}" = "1" ]; then
   EXTRA_ARGS+=(--normalize)
+fi
+if [ "${SKIP_TARGET_VIEWS}" = "1" ]; then
+  EXTRA_ARGS+=(--skip_target_views)
+fi
+if [ "${NO_ALIGN_ENV}" = "1" ]; then
+  EXTRA_ARGS+=(--align_env=False)
 fi
 
 echo "[render_sf3d_mesh] data_root=${DATA_ROOT} iter_subdir=${ITER_SUBDIR}"
@@ -41,4 +52,5 @@ echo "[render_sf3d_mesh] data_root=${DATA_ROOT} iter_subdir=${ITER_SUBDIR}"
   --env_rotation_z "${ENV_ROTATION_Z}" \
   --env_strength "${ENV_STRENGTH}" \
   --target_scale "${TARGET_SCALE}" \
+  --num_target_views "${NUM_TARGET_VIEWS}" \
   "${EXTRA_ARGS[@]}"
