@@ -11,8 +11,8 @@ For each mesh we:
        temporary ``.exr`` so Blender can load it; the temp file is removed
        once the render is done.
     2. Load the glb, then call ``normalize_scene(use_bounding_sphere=True,
-       target_scale=0.5)`` so the mesh fits in a unit-diameter sphere centered
-       at the origin.
+       target_scale=0.25)`` so the mesh fits in a sphere of radius 0.25
+       centered at the origin.
     3. Place a Cycles camera at ``(0, -1, 0)`` looking at the origin with up=z.
     4. Render at the requested resolution and write back to the scene's iter
        subdir as ``rerender_view_{00,01}.png`` (always overwrites).
@@ -48,7 +48,7 @@ class Options:
     cycles_samples: int = 128
     env_rotation_z: float = 0.0
     env_strength: float = 1.0
-    target_scale: float = 0.5  # bounding-sphere radius after normalize_scene
+    target_scale: float = 0.25  # bounding-sphere radius after normalize_scene
     scene_filter: Optional[str] = None
     output_prefix: str = "rerender_view"
 
